@@ -40,3 +40,7 @@ def MessageboxWarn(title, message):
     root.withdraw()
     messagebox.showwarning(title, message)
     root.destroy()
+
+class Settings:
+    def __init__():
+        pass

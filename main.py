@@ -2,7 +2,7 @@ from turtle import width
 import dearpygui.dearpygui as dpg
 from src.inference.inference import SetupInference
 import src.util.util as Util
-from src.search.search import ImageSearch
+from src.search.search import ImageSearch, UpdateResultArea
 import numpy as np
 
 
@@ -135,11 +135,26 @@ def Main():
                 with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="DynamicTextureWindow"):
                     with dpg.group(horizontal=False, tag="ResultPicture"):
                         dpg.add_image("DynamicTexture", tag ="DynamicImage")
+                        
                 
     dpg.set_primary_window("MainWindow", True)
     dpg.show_viewport()
-    dpg.start_dearpygui()
+    #dpg.start_dearpygui()
 
+    prev_x, prev_y = [0, 0]
+    # Loop
+    while dpg.is_dearpygui_running():
+        # Check window resize
+        if prev_x != dpg.get_item_width("MainWindow") or prev_y != dpg.get_item_height("MainWindow"):
+            prev_x = dpg.get_item_width("MainWindow")
+            prev_y = dpg.get_item_height("MainWindow")
+            dpg.set_item_width("ResultListWindow",int(dpg.get_item_width("MainWindow")/3))
+            print(dpg.get_value("ResultPicture"))
+            UpdateResultArea()
+            print("resized")
+            
+        
+        dpg.render_dearpygui_frame()
     dpg.destroy_context()
 
     pass
