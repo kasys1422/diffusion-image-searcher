@@ -1,6 +1,7 @@
-.gitignore
-img/
-res/model/
+/img/
+/res/model/
+/res/settings.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
