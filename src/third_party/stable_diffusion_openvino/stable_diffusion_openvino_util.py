@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 
 # Generate image function
-def GenerateImage(model="./res/model/stable-diffusion-v1-4-openvino-fp16",
+def GenerateImage(model="./res/model/stable-diffusion-v1-4-openvino-int8",
                   device="AUTO",
                   seed=None,
                   beta_start=0.00085,
