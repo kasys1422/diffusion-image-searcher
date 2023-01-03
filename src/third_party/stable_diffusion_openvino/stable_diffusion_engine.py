@@ -172,7 +172,7 @@ class StableDiffusionEngine:
             init_timestep = min(init_timestep, num_inference_steps)
             timesteps = np.array([[self.scheduler.timesteps[-init_timestep]]]).astype(np.long)
             noise = np.random.randn(*self.latent_shape)
-            latents = self.scheduler.add_noise(init_latents, noise, timesteps)[0].to('cpu').detach().numpy().copy()
+            latents = self.scheduler.add_noise(torch.from_numpy(init_latents.astype(np.float32)).clone(), torch.from_numpy(noise.astype(np.float32)).clone(), torch.from_numpy(timesteps.astype(np.int64)).clone())[0]
 
         del self.latent_shape, self._vae_encoder
 
@@ -182,7 +182,10 @@ class StableDiffusionEngine:
             mask = None
 
         # if we use LMSDiscreteScheduler, let's make sure latents are mulitplied by sigmas
-        latents = latents * self.scheduler.init_noise_sigma.to('cpu').detach().numpy().copy()
+        if init_image is None:
+            latents = latents * self.scheduler.init_noise_sigma.to('cpu').detach().numpy().copy()
+        else:
+            latents = latents * self.scheduler.init_noise_sigma
 
         # prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
         # eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.

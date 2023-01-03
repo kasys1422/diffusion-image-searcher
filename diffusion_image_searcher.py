@@ -1,23 +1,30 @@
 import dearpygui.dearpygui as dpg
 from src.inference.inference import SetupInference
 import src.util.util as Util
-from src.util.util import _
+from src.util.util import _ , FrozendLoggingErrorCheck
 from src.search.search import ImageSearch, UpdateResultArea
 import numpy as np
 import sys
-
-
 import psutil
+
+VERSION = "0.0.1"
+
+FrozendLoggingErrorCheck("./log/last_log.txt")
 
 def CreateSettingWindow(sender, app_data, user_data):
     def SaveValues():
         user_data.stable_diffusion_model_name = dpg.get_value("SelectModel")
         user_data.num_inference_steps = int(dpg.get_value("NumInferenceSteps"))
+        user_data.override_threshold = float(dpg.get_value("OverrideThreshold"))
         user_data.save_inferenced_image = dpg.get_value("SaveInferencedImage")
+        user_data.Save()
+        dpg.delete_item("SettingWindow")
+
     if dpg.does_item_exist("SettingWindow"):
         print("window already exists")
+
     else:
-        with dpg.window(tag="SettingWindow", label=_("Settings"),pos=[340,100],height=500,width=600,on_close=OnWindowClose):
+        with dpg.window(tag="SettingWindow", label=_("Settings"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-250],height=500,width=600,on_close=OnWindowClose):
             with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
                 dpg.add_text(_("Image Generation Model"))
                 list_buf = [ d['name'] for d in user_data.stable_diffusion_models]
@@ -29,6 +36,11 @@ def CreateSettingWindow(sender, app_data, user_data):
                 dpg.add_input_text(tag="NumInferenceSteps", decimal=True,default_value=user_data.num_inference_steps)
                 with dpg.tooltip(parent="NumInferenceSteps"):
                     dpg.add_text(_("NumInferenceSteps"))
+                dpg.add_separator()
+                dpg.add_text(_("Override threshold"))
+                dpg.add_input_text(tag="OverrideThreshold", decimal=True,default_value=user_data.override_threshold)
+                with dpg.tooltip(parent="OverrideThreshold"):
+                    dpg.add_text(_("Override thresholds."))
                 dpg.add_separator()
                 dpg.add_text(_("Save the inferred image to img/"))
                 dpg.add_checkbox(tag="SaveInferencedImage",default_value=user_data.save_inferenced_image)
@@ -42,17 +54,18 @@ def CreateHelpWindow():
     if dpg.does_item_exist("HelpWindow"):
         print("window already exists")
     else:
-        with dpg.window(tag="HelpWindow", label=_("Information"),pos=[340,100],height=500,width=600, on_close=OnWindowClose):
+        with dpg.window(tag="HelpWindow", label=_("Information"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-100],width=600,height=200, on_close=OnWindowClose):
             with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
-                pass
+                dpg.add_text(_('Diffusion Image Searcher') + ' ' +_('version') + ' ' + VERSION)
+                dpg.add_text(_('[website]') + ' ' + 'https://github.com/kasys1422/diffusion-image-searcher')
 
 def CreateAboutWindow():
-    if dpg.does_item_exist("AboutWindow"):
+    if dpg.does_item_exist("TPLWindow"):
         print("window already exists")
     else:
-        with dpg.window(tag="AboutWindow", label=_("About this software"),pos=[340,100],height=500,width=600, on_close=OnWindowClose):
+        with dpg.window(tag="TPLWindow", label=_("Third party license"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-250],height=500,width=600, on_close=OnWindowClose):
             with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
-                dpg.add_text("about")
+                dpg.add_text("")
 
 def OnWindowClose(sender):
     # workaround
@@ -89,7 +102,7 @@ def Main():
         limited_mode_text = _("[Limited mode]") + " "
     # Setup DearPyGUI
     dpg.create_context()
-    dpg.create_viewport(title=limited_mode_text + _('Text to Image Searching System'), width=1280, height=720)
+    dpg.create_viewport(title=limited_mode_text + _('Diffusion Image Searcher'), width=1280, height=720,min_width=680,min_height=640)
     dpg.setup_dearpygui()
 
     # Setup OpenVINO for image search
@@ -112,7 +125,7 @@ def Main():
             dpg.add_menu_item(label="Settings", callback=CreateSettingWindow, user_data=settings)
             with dpg.menu(label="Help"):
                 dpg.add_menu_item(label="Information", callback=CreateHelpWindow)
-                dpg.add_menu_item(label="About", callback=CreateAboutWindow)
+                dpg.add_menu_item(label="Third party license", callback=CreateAboutWindow)
         with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, label="Other Themes", tag="wb"):
             
 
@@ -122,14 +135,14 @@ def Main():
                     with dpg.tab(label=_("Search by text"), tag="Text2Img"):
                         with dpg.group(horizontal=True):
                             dpg.add_text(_("Folder to search"))
-                            dpg.add_input_text(tag="T2IFolder", default_value=settings.pictures_path, callback=lambda:SavePicturePath(dpg.get_value("T2IFolder"), ["T2IFolder", "I2IFolder", "ISFolder"], settings))
-                            dpg.add_button(label=_("Select Folder"), callback=lambda:SavePicturePath(Util.OpenFolder("./img"), ["T2IFolder", "I2IFolder", "ISFolder"], settings))
+                            dpg.add_input_text(tag="T2IFolder", default_value=settings.pictures_path, callback=lambda:SavePicturePath(dpg.get_value("T2IFolder"), ["T2IFolder", "ISFolder"], settings))
+                            dpg.add_button(label=_("Select Folder"), callback=lambda:SavePicturePath(Util.OpenFolder("./img"), ["T2IFolder", "ISFolder"], settings))
                         with dpg.group(horizontal=True):
                             dpg.add_text(_('Prompt'))
                             dpg.add_input_text(label="", tag="T2IPrompt")
                         dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("T2IFolder"), dpg.get_value("T2IPrompt")))
                         dpg.add_text("")
-                
+                    '''
                     with dpg.tab(label="Search by text and image", tag="Img2Img"):
                         with dpg.group(horizontal=True):
                             dpg.add_text(_("Folder to search"))
@@ -143,16 +156,16 @@ def Main():
                             dpg.add_text(_('Prompt'))
                             dpg.add_input_text(label="", tag="I2IPrompt")
                         dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("I2IFolder"), dpg.get_value("I2IPrompt"), dpg.get_value("I2IFile")))
-
+                    #'''
                 with dpg.tab(label=_("Search by image"), tag="ImgSearch"):
                     with dpg.group(horizontal=True):
                         dpg.add_text(_("Folder to search"))
-                        dpg.add_input_text(tag="ISFolder", default_value=settings.pictures_path, callback=lambda:SavePicturePath(dpg.get_value("ISIFolder"), ["T2IFolder", "I2IFolder", "ISFolder"], settings))
-                        dpg.add_button(label=_("Select Folder"), callback=lambda:SavePicturePath(Util.OpenFolder("./img"), ["T2IFolder", "I2IFolder", "ISFolder"], settings))
+                        dpg.add_input_text(tag="ISFolder", default_value=settings.pictures_path, callback=lambda:SavePicturePath(dpg.get_value("ISFolder"), ["T2IFolder","ISFolder"], settings))
+                        dpg.add_button(label=_("Select Folder"), callback=lambda:SavePicturePath(Util.OpenFolder("./img"), ["T2IFolder","ISFolder"], settings))
                     with dpg.group(horizontal=True):
                         dpg.add_text(_("Files to search"))
-                        dpg.add_input_text(tag="ISFile", default_value=settings.search_pictures_path, callback=lambda:SavePicturePath(dpg.get_value("ISFile"), ["I2IFile", "ISFile"], settings,"search_pictures_path"))
-                        dpg.add_button(label=_("Select File"), callback=lambda:SavePicturePath(Util.OpenFile("./img"), ["I2IFile", "ISFile"], settings,"search_pictures_path"))
+                        dpg.add_input_text(tag="ISFile", default_value=settings.search_pictures_path, callback=lambda:SavePicturePath(dpg.get_value("ISFile"), ["ISFile"], settings,"search_pictures_path"))
+                        dpg.add_button(label=_("Select File"), callback=lambda:SavePicturePath(Util.OpenFile("./img"), ["ISFile"], settings,"search_pictures_path"))
                     dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("ISFolder"), None, dpg.get_value("ISFile"),True))
                     dpg.add_text("")
 

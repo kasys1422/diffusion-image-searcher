@@ -4,49 +4,26 @@ import os
 from pathlib import Path
 from pickletools import float8
 import re
+from ssl import DefaultVerifyPaths
 from tokenize import tabsize
 from scipy.spatial import distance
 import numpy as np
 import cv2
 import dearpygui.dearpygui as dpg
 from src.util.stable_diffusion_util import GenerateImage
-from src.util.util import MessageboxWarn, _
+from src.util.util import MessageboxWarn, _, GetImageEgifTags, OpenInExplorerCallback
 import psutil
+import pyperclip
 
 CURRENT_IMAGE = np.full((256, 256, 3), (37, 37, 37),np.uint8)
+CURRENT_IMAGE_DATA = None
 SEARCH_ONECE = False
+INDEX = 1
 
 # Calculate cosine similarity
 def GetCosineSimilarity(vec1, vec2):
     return np.sum(vec1 * vec2) / (math.sqrt(np.sum(vec1 * vec1)) * math.sqrt(np.sum(vec2 * vec2)))
 
-'''
-def DpgSetImage(image, tag, width=300, height=300):
-    image_height, image_width, _ = image.shape[:3]
-    if image_height <= image_width:
-        padding_v = int((image_width - image_height) / 2)
-        padding_h = 0
-    else:
-        padding_v = 0
-        padding_h = int((image_height - image_width) / 2)
-    image = cv2.copyMakeBorder(image, padding_v, padding_v, padding_h, padding_h, cv2.BORDER_CONSTANT, (37, 37, 39, 0))
-    image = cv2.resize(image , (width, height))
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
-    dpg.set_value(tag, image/255)
-
-def DpgSetImageOld(image, tag, width=300, height=300):
-    image_height, image_width, _ = image.shape[:3]
-    if image_height <= image_width:
-        padding_v = int((image_width - image_height) / 2)
-        padding_h = 0
-    else:
-        padding_v = 0
-        padding_h = int((image_height - image_width) / 2)
-    image = cv2.copyMakeBorder(image, padding_v, padding_v, padding_h, padding_h, cv2.BORDER_CONSTANT, (37, 37, 39, 0))
-    image = cv2.resize(image , (width, height))
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
-    dpg.set_value(tag, image/255)
-    '''
 # Convert DearPyGUI to handle OpenCV images
 def ConvertImageOpenCVToDearPyGUI(image):
     data = np.flip(image, 2)
@@ -88,30 +65,67 @@ def DpgSetImage(image, tag, parent, width=None, height=None, min_width=256, min_
     dpg.set_value(tag, buffer_frame)
 
 def DpgSetImageListBoxCallback(sender, app_data, user_data):
-    #DpgSetImage(user_data[int(app_data.lstrip("[").split("]")[0]) - 1][2], "DynamicTexture")
     DpgSetImage(user_data[int(app_data.lstrip("[").split("]")[0]) - 1][2], "DynamicTexture", "DynamicTextureWindow")
 
-def UpdateResultArea():
+def DpgAddCopyToClipBoardButton(label, parent, value, tag=None, width=None):
+    if tag==None:
+        tag = parent + "Button"
+    dpg.add_button(label=label, tag=tag, width=width, parent=parent, callback=lambda:pyperclip.copy(value))
+    with dpg.tooltip(parent=tag):
+        dpg.add_text(_("Copy values to clipboard"))
+    pass
+
+def DpgAddPictureInfo(parent, tag, button_width,width, label ,value):
+    dpg.add_group(horizontal=True, tag=tag, parent=parent)
+    DpgAddCopyToClipBoardButton(label=label, parent=tag, width=button_width, value=value)
+    dpg.add_input_text(readonly=True, default_value=value, parent=tag,width=width)
+
+
+def UpdateResultArea(): 
+    win_width = dpg.get_item_width("MainWindow")
+    win_height = dpg.get_item_height("MainWindow")
     if SEARCH_ONECE == True:
-        x = int(dpg.get_item_width("MainWindow") / 3 * 2)
-        y = int(dpg.get_item_height("MainWindow"))
+        x = int(win_width / 3 * 1.8)
+        y = int(win_height)
         dpg.delete_item("DynamicTextureWindow", children_only=True)
+        button_width = 100
         if x > y:
             dpg.add_group(horizontal=True, tag="ResultPicture", parent="DynamicTextureWindow")
-            width = int(dpg.get_item_width("MainWindow")/3)
-            height = int(dpg.get_item_height("MainWindow")-240)
+            img_width = int(win_width/3)
+            img_height = int(win_height-240)
+            info_text_width = img_width-190
+            info_button_width = img_width-82
         else:
             dpg.add_group(horizontal=False, tag="ResultPicture", parent="DynamicTextureWindow")
-            width = int(dpg.get_item_width("MainWindow")/3*2-60)
-            height = int(dpg.get_item_height("MainWindow")/2.5)
-        DpgSetImage(CURRENT_IMAGE, "DynamicTexture", "ResultPicture", width=width, height=height)
-        dpg.add_group(horizontal=False, tag="ResultInfo", parent="ResultPicture")
-        dpg.add_text("test", parent="ResultInfo")
+            img_width = int(win_width/3*2-60)
+            img_height = int(win_height/2.5)
+            info_text_width = img_width-134
+            info_button_width = img_width-26
+        
+        for i in range(INDEX-1):
+            dpg.set_item_width(item="button_" + str(i + 1), width=max(int(win_width / 3)-70,250))
+
+        # Show picture data
+        exif_tags = GetImageEgifTags(str(CURRENT_IMAGE_DATA[0]), ["DateTime", "Model", "GPSTag"], _("No information"))
+        DpgSetImage(CURRENT_IMAGE, "DynamicTexture", "ResultPicture", width=img_width, height=img_height)
+        dpg.add_child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="ResultInfo", parent="ResultPicture")
+
+
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureName", button_width=button_width, width=info_text_width, label=_("Name"), value=CURRENT_IMAGE_DATA[0].name)
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicuturePath", button_width=button_width, width=info_text_width, label=_("Path"), value=str(CURRENT_IMAGE_DATA[0]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureRes", button_width=button_width, width=info_text_width, label=_("Resolution"), value=str(CURRENT_IMAGE_DATA[2].shape[1])+"x"+str(CURRENT_IMAGE_DATA[2].shape[0]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureDate", button_width=button_width, width=info_text_width, label=_("Date"), value=str(exif_tags[0]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureDevice", button_width=button_width, width=info_text_width, label=_("Device"), value=str(exif_tags[1]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureGPS", button_width=button_width, width=info_text_width, label=_("GPS"), value=str(exif_tags[2]))
+        dpg.add_button(parent="ResultInfo", label=_("Open in explorer"), width=info_button_width, callback=OpenInExplorerCallback, user_data=CURRENT_IMAGE_DATA[0].parent)
+
     if dpg.does_item_exist("LoadingWindow"):
-        dpg.set_item_pos("LoadingWindow", [dpg.get_item_width("MainWindow")/2-62,dpg.get_item_height("MainWindow")/2-75])
+        dpg.set_item_pos("LoadingWindow", [win_width/2-62,dpg.get_item_height("MainWindow")/2-75])
+
 def DpgSetImageCallback(sender, app_data, user_data):
-    global CURRENT_IMAGE
-    CURRENT_IMAGE = user_data
+    global CURRENT_IMAGE, CURRENT_IMAGE_DATA
+    CURRENT_IMAGE = user_data[2]
+    CURRENT_IMAGE_DATA = user_data
     UpdateResultArea()
 
 def ShowLoadingWindow():
@@ -124,10 +138,10 @@ def HideLoadingWindow():
     if dpg.does_item_exist("LoadingWindow"):
         dpg.delete_item("LoadingWindow")
 
-def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_path=None, search_only=False):
+def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_path=None, create_image=False):
     # Check params
     model_data = settings.stable_diffusion_models[[d['name'] for d in settings.stable_diffusion_models].index(settings.stable_diffusion_model_name)]
-    # - about ram
+    # Error check
     if model_data["min_ram"] > psutil.virtual_memory().total / (2**30):
         MessageboxWarn(_("Warning"), _("Insufficient memory to run the image generation model. You need {}GB to run. Please change the model or add more memory.").format(model_data["min_ram"]))
         HideLoadingWindow()
@@ -140,23 +154,35 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         MessageboxWarn(_("Warning"), _("Please enter the correct path to the image you wish to search for."))
         HideLoadingWindow()
         return 0
+    if prompt == "" and create_image == False:
+        MessageboxWarn(_("Warning"), _("Please enter a prompt."))
+        HideLoadingWindow()
+        return 0
 
     
     # Get model's threshold 
-    try:
-        threshold = float(model_data["threshold"])
-    except:
-        threshold = 0.35
+    if settings.override_threshold == 0:
+        try:
+            threshold = float(model_data["threshold"])
+        except:
+            threshold = 0.35
+    else:
+        threshold = settings.override_threshold
 
-    index = 1
+    global INDEX
+    INDEX = 1
     ShowLoadingWindow()
     
-    if search_only == False:
+    if create_image == False:
         generated_image = GenerateImage(model_data=model_data,
                                         prompt=prompt,
                                         num_inference_steps=settings.num_inference_steps,
                                         init_image_path=base_image_path,
-                                        output=None if settings.save_inferenced_image == True else "./img/"+datetime.datetime.now().strftime('%Y%m%d%H%M%S')+" "+ prompt+".png")
+                                        output=None if settings.save_inferenced_image == False else "./img/"+datetime.datetime.now().strftime('%Y%m%d%H%M%S')+" "+ prompt+".png")
+        print(type(generated_image))
+        if str(type(generated_image)) != "<class 'numpy.ndarray'>":
+            HideLoadingWindow()
+            return 0
         inference_data.StartInferenceAsync(generated_image)
     else:
         try:
@@ -187,14 +213,17 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         print([image_path, cos_sim])
         if cos_sim <= threshold:
             searched_images.append([image_path, cos_sim, image_frame])
-            searched_images_names.append("[" + str(index) + "] " + str(image_path.name))
-            dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(index))
-            DpgSetImage(image_frame,"img_" + str(index),"item_" + str(index), width=24, height = 24,min_width=24,min_height = 24)
-            dpg.add_button(label=image_path.name,parent="item_" + str(index), callback=DpgSetImageCallback,user_data=searched_images[index-1][2])
-            index += 1
-    global CURRENT_IMAGE, SEARCH_ONECE
-    CURRENT_IMAGE = searched_images[0][2]
-    SEARCH_ONECE = True
-    UpdateResultArea()
-    HideLoadingWindow()
-    return searched_images
+            searched_images_names.append("[" + str(INDEX) + "] " + str(image_path.name))
+            dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(INDEX))
+            DpgSetImage(image_frame,"img_" + str(INDEX),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
+            dpg.add_button(label=image_path.name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=searched_images[INDEX-1])
+            INDEX += 1
+    if INDEX != 1:
+        DpgSetImageCallback(None,None,searched_images[0])
+        global SEARCH_ONECE
+        SEARCH_ONECE = True
+        UpdateResultArea()
+        HideLoadingWindow()
+        return searched_images
+    else:
+        dpg.add_text("No picture", parent="Result")
