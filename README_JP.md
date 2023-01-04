@@ -1,3 +1,4 @@
+[[English](https://github.com/kasys1422/diffusion-image-searcher/tree/main)/日本語]
 # diffusion-image-searcher
 
 diffusion-image-searcher は、入力したテキストに関連した画像をローカルコンピュータ内から検索するソフトウェアです。また、画像を元に類似画像を検索することも可能です。
