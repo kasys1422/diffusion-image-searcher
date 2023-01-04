@@ -5,6 +5,7 @@ from src.util.util import _ , FrozendLoggingErrorCheck
 from src.search.search import ImageSearch, UpdateResultArea
 import numpy as np
 import sys
+import os
 import psutil
 
 VERSION = "0.0.1"
@@ -63,9 +64,12 @@ def CreateAboutWindow():
     if dpg.does_item_exist("TPLWindow"):
         print("window already exists")
     else:
-        with dpg.window(tag="TPLWindow", label=_("Third party license"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-250],height=500,width=600, on_close=OnWindowClose):
+        f = open("./third_party_licenses.txt", encoding="utf-8")
+        licenses = f.read()
+        f.close()
+        with dpg.window(tag="TPLWindow", label=_("Third party license"),pos=[dpg.get_item_width("MainWindow")/2-315,dpg.get_item_height("MainWindow")/2-250],height=500,width=630, on_close=OnWindowClose):
             with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
-                dpg.add_text("")
+                dpg.add_text(licenses)
 
 def OnWindowClose(sender):
     # workaround
@@ -125,7 +129,8 @@ def Main():
             dpg.add_menu_item(label="Settings", callback=CreateSettingWindow, user_data=settings)
             with dpg.menu(label="Help"):
                 dpg.add_menu_item(label="Information", callback=CreateHelpWindow)
-                dpg.add_menu_item(label="Third party license", callback=CreateAboutWindow)
+                if os.path.isfile("./third_party_licenses.txt"):
+                    dpg.add_menu_item(label="Third party license", callback=CreateAboutWindow)
         with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, label="Other Themes", tag="wb"):
             
 
@@ -194,8 +199,6 @@ def Main():
             #print(dpg.get_value("ResultPicture"))
             UpdateResultArea()
             #print("resized")
-            
-        
         dpg.render_dearpygui_frame()
     dpg.destroy_context()
     settings.Save()
