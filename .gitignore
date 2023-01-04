@@ -1,6 +1,11 @@
-.gitignore
 img/
 res/model/
+res/settings.json
+!res/locale/
+setup.py
+build/
+translate_bat/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -55,7 +60,7 @@ coverage.xml
 cover/
 
 # Translations
-*.mo
+#*.mo
 *.pot
 
 # Django stuff:

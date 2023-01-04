@@ -22,8 +22,8 @@ import cv2
 import numpy as np
 
 # Generate image function
-def GenerateImage(model="./res/model/stable-diffusion-v1-4-openvino-fp16",
-                  device="CPU",
+def GenerateImage(model="./res/model/stable-diffusion-v1-4-openvino-int8",
+                  device="AUTO",
                   seed=None,
                   beta_start=0.00085,
                   beta_end=0.012,
@@ -44,7 +44,6 @@ def GenerateImage(model="./res/model/stable-diffusion-v1-4-openvino-fp16",
             beta_start=beta_start,
             beta_end=beta_end,
             beta_schedule=beta_schedule,
-            #tensor_format="np"
         )
     else:
         scheduler = PNDMScheduler(
@@ -52,7 +51,6 @@ def GenerateImage(model="./res/model/stable-diffusion-v1-4-openvino-fp16",
             beta_end=beta_end,
             beta_schedule=beta_schedule,
             skip_prk_steps = True,
-            #tensor_format="np"
         )
     engine = StableDiffusionEngine(
         model = model,

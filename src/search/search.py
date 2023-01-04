@@ -1,31 +1,28 @@
 import datetime
 import math
+import os
 from pathlib import Path
+from pickletools import float8
 import re
+from ssl import DefaultVerifyPaths
+from tokenize import tabsize
 from scipy.spatial import distance
 import numpy as np
 import cv2
-
 import dearpygui.dearpygui as dpg
+from src.util.stable_diffusion_util import GenerateImage
+from src.util.util import MessageboxWarn, _, GetImageEgifTags, OpenInExplorerCallback
+import psutil
+import pyperclip
 
-from src.third_party.stable_diffusion_openvino.stable_diffusion_openvino_util import GenerateImage
+CURRENT_IMAGE = np.full((256, 256, 3), (37, 37, 37),np.uint8)
+CURRENT_IMAGE_DATA = None
+SEARCH_ONECE = False
+INDEX = 1
 
 # Calculate cosine similarity
 def GetCosineSimilarity(vec1, vec2):
     return np.sum(vec1 * vec2) / (math.sqrt(np.sum(vec1 * vec1)) * math.sqrt(np.sum(vec2 * vec2)))
-
-def DpgSetImage(image, tag, width=300, height=300):
-    image_height, image_width, _ = image.shape[:3]
-    if image_height <= image_width:
-        padding_v = int((image_width - image_height) / 2)
-        padding_h = 0
-    else:
-        padding_v = 0
-        padding_h = int((image_height - image_width) / 2)
-    image = cv2.copyMakeBorder(image, padding_v, padding_v, padding_h, padding_h, cv2.BORDER_CONSTANT, (37, 37, 39, 0))
-    image = cv2.resize(image , (width, height))
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
-    dpg.set_value(tag, image/255)
 
 # Convert DearPyGUI to handle OpenCV images
 def ConvertImageOpenCVToDearPyGUI(image):
@@ -34,43 +31,169 @@ def ConvertImageOpenCVToDearPyGUI(image):
     data = np.asfarray(data, dtype='f')
     return np.true_divide(data, 255.0)
 
-def DpgSetImage2(image, tag, parent):
+def DpgSetImage(image, tag, parent, width=None, height=None, min_width=256, min_height=256):
     # Resize frame and show it in window
-    height, width, _ = image.shape[:3]
-    print(dpg.get_item_height(parent))
-    print(dpg.get_item_width(parent))
-    video_frame_height = max(dpg.get_item_height(parent) - 35, 256)
-    video_frame_width = max(dpg.get_item_width(parent) - 20, 256)
-    if video_frame_width < video_frame_height * (width / height):
-        video_frame_height = video_frame_width * (height / width)
+    if width == None:
+        width = dpg.get_item_width(parent)
+    if height == None:
+        height = dpg.get_item_height(parent)
+    img_height, img_width = image.shape[:2]
+    input_mag = max(width,min_width) / max(height,min_height)
+    img_mag = img_width / img_height
+    if input_mag <= img_mag:
+        padding_v = int((img_height * img_mag / input_mag - img_height) / 2)
+        padding_h = 0
+        img_height = img_height * img_mag / input_mag 
     else:
-        video_frame_width = video_frame_height * (width / height)
-    buffer_frame = ConvertImageOpenCVToDearPyGUI(cv2.resize(image, (int(video_frame_width), int(video_frame_height))))
+        padding_v = 0
+        padding_h = int((img_width / img_mag * input_mag - img_width) / 2)
+        img_width = img_width / img_mag * input_mag
+    image = cv2.copyMakeBorder(image, padding_v, padding_v, padding_h, padding_h, cv2.BORDER_CONSTANT, (37, 37, 39))
+    frame_height = max(height, min_height)
+    frame_width = max(width, min_width)
+    if frame_width < frame_height * (img_width / img_height):
+        frame_height = frame_width * (img_height / img_width)
+    else:
+        frame_width = frame_height * (img_width / img_height)
+    buffer_frame = ConvertImageOpenCVToDearPyGUI(cv2.resize(image, (int(frame_width), int(frame_height))))
     dpg.delete_item(parent, children_only=True)
     dpg.delete_item(tag)
     with dpg.texture_registry(show=False):      
-        dpg.add_raw_texture(int(video_frame_width), int(video_frame_height), buffer_frame, tag=tag, format=dpg.mvFormat_Float_rgb)
+        dpg.add_raw_texture(int(frame_width), int(frame_height), buffer_frame, tag=tag, format=dpg.mvFormat_Float_rgb)
         dpg.add_image(tag, parent=parent)
-    dpg.configure_item(tag, width=int(video_frame_width), height=int(video_frame_height))
+    dpg.configure_item(tag, width=int(frame_width), height=int(frame_height))
     dpg.set_value(tag, buffer_frame)
 
-def DpgSetImageListBoxCallback(sender, app_data, user_data, ):
-    print(app_data)
-    #DpgSetImage(user_data[int(app_data.lstrip("[").split("]")[0]) - 1][2], "DynamicTexture")
-    DpgSetImage2(user_data[int(app_data.lstrip("[").split("]")[0]) - 1][2], "DynamicTexture", "DynamicTextureWindow")
+def DpgSetImageListBoxCallback(sender, app_data, user_data):
+    DpgSetImage(user_data[int(app_data.lstrip("[").split("]")[0]) - 1][2], "DynamicTexture", "DynamicTextureWindow")
 
-def ImageSearch(inference_data, pictures_dir_path, prompt, search_only=False):
-    index = 1
-    if search_only == False:
-        generated_image = GenerateImage(prompt=prompt,
-                              num_inference_steps=8,
-                              output="./img/"+datetime.datetime.now().strftime('%Y%m%d%H%M%S')+" "+dpg.get_value("Prompt")+".png")
+def DpgAddCopyToClipBoardButton(label, parent, value, tag=None, width=None):
+    if tag==None:
+        tag = parent + "Button"
+    dpg.add_button(label=label, tag=tag, width=width, parent=parent, callback=lambda:pyperclip.copy(value))
+    with dpg.tooltip(parent=tag):
+        dpg.add_text(_("Copy values to clipboard"))
+    pass
+
+def DpgAddPictureInfo(parent, tag, button_width,width, label ,value):
+    dpg.add_group(horizontal=True, tag=tag, parent=parent)
+    DpgAddCopyToClipBoardButton(label=label, parent=tag, width=button_width, value=value)
+    dpg.add_input_text(readonly=True, default_value=value, parent=tag,width=width)
+
+
+def UpdateResultArea(): 
+    win_width = dpg.get_item_width("MainWindow")
+    win_height = dpg.get_item_height("MainWindow")
+    if SEARCH_ONECE == True:
+        x = int(win_width / 3 * 1.8)
+        y = int(win_height)
+        dpg.delete_item("DynamicTextureWindow", children_only=True)
+        button_width = 100
+        if x > y:
+            dpg.add_group(horizontal=True, tag="ResultPicture", parent="DynamicTextureWindow")
+            img_width = int(win_width/3)
+            img_height = int(win_height-240)
+            info_text_width = img_width-190
+            info_button_width = img_width-82
+        else:
+            dpg.add_group(horizontal=False, tag="ResultPicture", parent="DynamicTextureWindow")
+            img_width = int(win_width/3*2-60)
+            img_height = int(win_height/2.5)
+            info_text_width = img_width-134
+            info_button_width = img_width-26
+        
+        for i in range(INDEX-1):
+            dpg.set_item_width(item="button_" + str(i + 1), width=max(int(win_width / 3)-70,250))
+
+        # Show picture data
+        exif_tags = GetImageEgifTags(str(CURRENT_IMAGE_DATA[0]), ["DateTime", "Model", "GPSTag"], _("No information"))
+        DpgSetImage(CURRENT_IMAGE, "DynamicTexture", "ResultPicture", width=img_width, height=img_height)
+        dpg.add_child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="ResultInfo", parent="ResultPicture")
+
+
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureName", button_width=button_width, width=info_text_width, label=_("Name"), value=CURRENT_IMAGE_DATA[0].name)
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicuturePath", button_width=button_width, width=info_text_width, label=_("Path"), value=str(CURRENT_IMAGE_DATA[0]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureRes", button_width=button_width, width=info_text_width, label=_("Resolution"), value=str(CURRENT_IMAGE_DATA[2].shape[1])+"x"+str(CURRENT_IMAGE_DATA[2].shape[0]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureDate", button_width=button_width, width=info_text_width, label=_("Date"), value=str(exif_tags[0]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureDevice", button_width=button_width, width=info_text_width, label=_("Device"), value=str(exif_tags[1]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureGPS", button_width=button_width, width=info_text_width, label=_("GPS"), value=str(exif_tags[2]))
+        dpg.add_button(parent="ResultInfo", label=_("Open in explorer"), width=info_button_width, callback=OpenInExplorerCallback, user_data=CURRENT_IMAGE_DATA[0].parent)
+
+    if dpg.does_item_exist("LoadingWindow"):
+        dpg.set_item_pos("LoadingWindow", [win_width/2-62,dpg.get_item_height("MainWindow")/2-75])
+
+def DpgSetImageCallback(sender, app_data, user_data):
+    global CURRENT_IMAGE, CURRENT_IMAGE_DATA
+    CURRENT_IMAGE = user_data[2]
+    CURRENT_IMAGE_DATA = user_data
+    UpdateResultArea()
+
+def ShowLoadingWindow():
+    if not dpg.does_item_exist("LoadingWindow"):
+        with dpg.window(label="", tag="LoadingWindow",pos=[dpg.get_item_width("MainWindow")/2-62,dpg.get_item_height("MainWindow")/2-75],width=124,height=150, no_resize=True, no_move=True, no_close=True, modal=True, menubar=False, no_scrollbar=True, no_background=True, no_title_bar=True):
+            dpg.add_loading_indicator(radius=6, color=(48,172,255), secondary_color=(48,172,255))
+                
+        
+def HideLoadingWindow():
+    if dpg.does_item_exist("LoadingWindow"):
+        dpg.delete_item("LoadingWindow")
+
+def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_path=None, create_image=False):
+    # Check params
+    model_data = settings.stable_diffusion_models[[d['name'] for d in settings.stable_diffusion_models].index(settings.stable_diffusion_model_name)]
+    # Error check
+    if model_data["min_ram"] > psutil.virtual_memory().total / (2**30):
+        MessageboxWarn(_("Warning"), _("Insufficient memory to run the image generation model. You need {}GB to run. Please change the model or add more memory.").format(model_data["min_ram"]))
+        HideLoadingWindow()
+        return 0 
+    if str(pictures_dir_path) == "None" or os.path.isdir(pictures_dir_path) == False:
+        MessageboxWarn(_("Warning"), _("Please enter the correct path to the folder you wish to search."))
+        HideLoadingWindow()
+        return 0
+    if str(base_image_path) == "" or os.path.exists(str(base_image_path)) == False and str(base_image_path) != "None":
+        MessageboxWarn(_("Warning"), _("Please enter the correct path to the image you wish to search for."))
+        HideLoadingWindow()
+        return 0
+    if prompt == "" and create_image == False:
+        MessageboxWarn(_("Warning"), _("Please enter a prompt."))
+        HideLoadingWindow()
+        return 0
+
+    
+    # Get model's threshold 
+    if settings.override_threshold == 0:
+        try:
+            threshold = float(model_data["threshold"])
+        except:
+            threshold = 0.35
+    else:
+        threshold = settings.override_threshold
+
+    global INDEX
+    INDEX = 1
+    ShowLoadingWindow()
+    
+    if create_image == False:
+        generated_image = GenerateImage(model_data=model_data,
+                                        prompt=prompt,
+                                        num_inference_steps=settings.num_inference_steps,
+                                        init_image_path=base_image_path,
+                                        output=None if settings.save_inferenced_image == False else "./img/"+datetime.datetime.now().strftime('%Y%m%d%H%M%S')+" "+ prompt+".png")
+        print(type(generated_image))
+        if str(type(generated_image)) != "<class 'numpy.ndarray'>":
+            HideLoadingWindow()
+            return 0
         inference_data.StartInferenceAsync(generated_image)
     else:
-        inference_data.StartInferenceAsync(cv2.imread(str("./img/20221215144044ramen on the wood table.png")))
+        try:
+            base_image = cv2.imread(base_image_path)
+        except:
+            MessageboxWarn(_("Warning"), _("File read error."))
+            HideLoadingWindow()
+            return 0
+        inference_data.StartInferenceAsync(base_image)
     
     image_list = sorted([p for p in Path(pictures_dir_path).glob('**/*') if re.search('/*\\.(jpg|jpeg|png|gif|bmp|tiff)', str(p))])
-    #print(image_list)
 
     searched_images = []
     searched_images_names = []
@@ -88,14 +211,19 @@ def ImageSearch(inference_data, pictures_dir_path, prompt, search_only=False):
         #cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
         cos_sim = distance.cdist(image_vec, generated_image_vector, 'cosine')[0]
         print([image_path, cos_sim])
-        if cos_sim <= 0.35:
+        if cos_sim <= threshold:
             searched_images.append([image_path, cos_sim, image_frame])
-            searched_images_names.append("[" + str(index) + "] " + str(image_path.name))
-            #dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(index))
-            #DpgSetImage(image_frame,32,32,"item_" + str(index),"img_" + str(index),False)
-            #dpg.add_button(label=image_path.name,parent="item_" + str(index), callback=DpgSetImage,user_data=[searched_images[int(str(index))][2],256,256,"DynamicTexture"])
-            index += 1
-    dpg.add_listbox(searched_images_names,parent="Result",callback=DpgSetImageListBoxCallback,user_data=searched_images,width=540,num_items=16)
-    #DpgSetImage(searched_images[0][2], "DynamicTexture", 300,300)
-    DpgSetImage2(searched_images[0][2], "DynamicTexture", "DynamicTextureWindow")
-    return searched_images
+            searched_images_names.append("[" + str(INDEX) + "] " + str(image_path.name))
+            dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(INDEX))
+            DpgSetImage(image_frame,"img_" + str(INDEX),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
+            dpg.add_button(label=image_path.name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=searched_images[INDEX-1])
+            INDEX += 1
+    if INDEX != 1:
+        DpgSetImageCallback(None,None,searched_images[0])
+        global SEARCH_ONECE
+        SEARCH_ONECE = True
+        UpdateResultArea()
+        HideLoadingWindow()
+        return searched_images
+    else:
+        dpg.add_text("No picture", parent="Result")
