@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 import dearpygui.dearpygui as dpg
 from src.util.stable_diffusion_util import GenerateImage
-from src.util.util import MessageboxWarn, _, GetImageEgifTags, OpenInExplorerCallback
+from src.util.util import MessageboxWarn, _, GetImageEgifTags, OpenInExplorerCallback, ImRead
 import psutil
 import pyperclip
 
@@ -167,6 +167,7 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
 
     ShowLoadingWindow()
     
+    print("[Info] Start image generate")
     if create_image == False:
         generated_image = GenerateImage(model_data=model_data,
                                         prompt=prompt,
@@ -177,14 +178,16 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             HideLoadingWindow()
             return 0
         inference_data.StartInferenceAsync(generated_image)
+        print("[Info] Complete image output")
     else:
         try:
-            base_image = cv2.imread(base_image_path)
+            base_image = ImRead(base_image_path)
         except:
             MessageboxWarn(_("Warning"), _("File read error."))
             HideLoadingWindow()
             return 0
         inference_data.StartInferenceAsync(base_image)
+    
     
     image_list = sorted([p for p in Path(pictures_dir_path).glob('**/*') if re.search('/*\\.(jpg|jpeg|png|gif|bmp|tiff)', str(p))])
 
@@ -197,13 +200,13 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         if inference_data.exec_net.requests[0].wait(-1) == 0:
             generated_image_vector = inference_data.GetInferenceDataAsync()
             break
-    
+    print("[Info] Start image searching")
     for image_path in image_list:
-        image_frame = cv2.imread(str(image_path))
+        image_frame = ImRead(str(image_path))
         image_vec = inference_data.InferenceData(image_frame)
         #cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
         cos_sim = distance.cdist(image_vec, generated_image_vector, 'cosine')[0]
-        print([image_path, cos_sim])
+        print("[Info] file:" + str(image_path) + ", value:"  + str(cos_sim))
         if cos_sim <= threshold:
             searched_images.append([image_path, cos_sim, image_frame])
             searched_images_names.append("[" + str(INDEX) + "] " + str(image_path.name))
@@ -211,6 +214,8 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             DpgSetImage(image_frame,"img_" + str(INDEX),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
             dpg.add_button(label=image_path.name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=searched_images[INDEX-1])
             INDEX += 1
+    print("[Info] Complete image searching")
+    print("[Info] Number of similar images = " + str(INDEX - 1))
     if INDEX != 1:
         DpgSetImageCallback(None,None,searched_images[0])
         global SEARCH_ONECE
@@ -219,4 +224,6 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         HideLoadingWindow()
         return searched_images
     else:
-        dpg.add_text("No picture", parent="Result")
+        UpdateResultArea()
+        HideLoadingWindow()
+        dpg.add_text(_("No file"), parent="Result")

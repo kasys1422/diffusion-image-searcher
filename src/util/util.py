@@ -11,6 +11,8 @@ import re
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 import webbrowser
+import numpy as np
+import cv2
 
 
 def Print(text):
@@ -196,3 +198,10 @@ def MatchExif(exif, tag_list, none_val):
 
 def GetImageEgifTags(path, tag_list, none_val):
     return MatchExif(GetExif(path), tag_list, none_val)
+
+def ImRead(path):
+    pil_img = Image.open(path)
+    img = np.array(pil_img)
+    if img.ndim == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    return img

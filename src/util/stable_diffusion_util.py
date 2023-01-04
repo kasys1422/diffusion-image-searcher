@@ -70,8 +70,6 @@ def GenerateImage(model_data, prompt,num_inference_steps, output,init_image_path
             except:
                 MessageboxError("UnexpectedError", "Unexpected error.")
                 return
-            
-        
 
     if output != None:
         print("save img to " + output)

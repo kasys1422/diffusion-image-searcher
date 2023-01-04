@@ -110,11 +110,12 @@ def DpgSyncValue(value, tag_list):
         dpg.set_value(tag, value)
 
 def SavePicturePath(value, tag_list, settings, settings_type=None):
-    DpgSyncValue(value, tag_list)
-    if settings_type == None: 
-        settings.pictures_path = value
-    elif settings_type == "search_pictures_path":
-        settings.search_pictures_path = value
+    if value != "":
+        DpgSyncValue(value, tag_list)
+        if settings_type == None: 
+            settings.pictures_path = value
+        elif settings_type == "search_pictures_path":
+            settings.search_pictures_path = value
 
 def Main():
     # Load settings
