@@ -1,6 +1,7 @@
 img/
 res/model/
 res/settings.json
+log/
 !res/locale/
 setup.py
 build/

@@ -1,6 +1,5 @@
 from openvino.inference_engine import IECore
 import cv2
-from src.util.util import Print
 
 class InferenceData:
     def __init__(self, input_name, input_shape, out_name, out_shape, exec_net):
@@ -48,15 +47,15 @@ class SetupInference:
             try:
                 exec_net = self.ie_core.load_network(network=net, device_name='AUTO', num_requests=1)
             except RuntimeError:
-                Print('[Error] Can not setup device(AUTO). Using CPU.')
+                print('[Error] Can not setup device(AUTO). Using CPU.')
                 try:
                     exec_net = self.ie_core.load_network(network=net, device_name='CPU', num_requests=1)
                 except RuntimeError:
-                    Print('[Error] Can not setup device(CPU). Using MYRIAD.')
+                    print('[Error] Can not setup device(CPU). Using MYRIAD.')
                     try:
                         exec_net = self.ie_core.load_network(network=net, device_name='MYRIAD', num_requests=1)
                     except RuntimeError:
-                        Print('[Error] Can not setup device(MYRIAD). Using GPU.')
+                        print('[Error] Can not setup device(MYRIAD). Using GPU.')
                         try:
                             exec_net = self.ie_core.load_network(network=net, device_name='GPU', num_requests=1)
                         except RuntimeError as e:

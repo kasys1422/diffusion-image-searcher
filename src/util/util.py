@@ -12,6 +12,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 import webbrowser
 
+
 def Print(text):
     print(text)
 
@@ -69,26 +70,28 @@ def MessageboxError(title=None, message=None, exit=False):
     if exit == True:
         sys.exit()
 
-class LogFrozen(object):
-    def __init__(self, filename=""):
+class Log(object):
+    def __init__(self, callback=None, filename=""):
         self.filename = filename
         if self.filename != "":
             self.l = open(filename, "a")
+        self.callback = callback
     def write(self, mm):
         if self.filename != "":
             self.l.write(mm)
+        if self.callback != None:
+            self.callback(mm)
     def flush(self):
         if self.filename != "":
             self.l.flush()
 
-def FrozendLoggingErrorCheck(filename=""):
-    if getattr(sys, "frozen", False):
-        filename=Path(filename)
-        if not os.path.exists(str(filename.parent)) and filename != "":
-            os.mkdir(str(filename.parent))
-        log = LogFrozen(filename)
-        sys.stdout = log
-        sys.stderr = log
+def InitLogging(callback, filename=""):
+    filename=Path(filename)
+    if not os.path.exists(str(filename.parent)) and filename != "":
+        os.mkdir(str(filename.parent))
+    log = Log(callback, filename)
+    sys.stdout = log
+    sys.stderr = log
 
 # Settings
 class Settings():
