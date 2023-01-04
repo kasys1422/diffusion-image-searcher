@@ -2,6 +2,7 @@ import datetime
 import math
 import os
 from pathlib import Path
+import time
 import re
 from scipy.spatial import distance
 import numpy as np
@@ -133,6 +134,9 @@ def HideLoadingWindow():
         dpg.delete_item("LoadingWindow")
 
 def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_path=None, create_image=False):
+    # Get start time
+    start_time = time.time()
+
     # Check params
     model_data = settings.stable_diffusion_models[[d['name'] for d in settings.stable_diffusion_models].index(settings.stable_diffusion_model_name)]
     # Error check
@@ -167,8 +171,9 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
 
     ShowLoadingWindow()
     
-    print("[Info] Start image generate")
+
     if create_image == False:
+        print("[Info] Start image generate")
         generated_image = GenerateImage(model_data=model_data,
                                         prompt=prompt,
                                         num_inference_steps=settings.num_inference_steps,
@@ -188,7 +193,7 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             return 0
         inference_data.StartInferenceAsync(base_image)
     
-    
+    print("[Info] Start image searching")
     image_list = sorted([p for p in Path(pictures_dir_path).glob('**/*') if re.search('/*\\.(jpg|jpeg|png|gif|bmp|tiff)', str(p))])
 
     searched_images = []
@@ -200,9 +205,15 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         if inference_data.exec_net.requests[0].wait(-1) == 0:
             generated_image_vector = inference_data.GetInferenceDataAsync()
             break
-    print("[Info] Start image searching")
+    
+    num = 0
+
     for image_path in image_list:
+        
+        print("[Info] file:" + str(image_path))
         image_frame = ImRead(str(image_path))
+        if image_frame is None:
+            continue
         image_vec = inference_data.InferenceData(image_frame)
         #cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
         cos_sim = distance.cdist(image_vec, generated_image_vector, 'cosine')[0]
@@ -214,8 +225,12 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             DpgSetImage(image_frame,"img_" + str(INDEX),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
             dpg.add_button(label=image_path.name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=searched_images[INDEX-1])
             INDEX += 1
+        num += 1
+
     print("[Info] Complete image searching")
+    print("[Info] Number of checked images = " + str(num))
     print("[Info] Number of similar images = " + str(INDEX - 1))
+    print("[Info] Elapsed times = " + str(time.time() - start_time) + "(s)")
     if INDEX != 1:
         DpgSetImageCallback(None,None,searched_images[0])
         global SEARCH_ONECE

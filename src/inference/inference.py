@@ -1,5 +1,6 @@
 from openvino.inference_engine import IECore
 import cv2
+import numpy as np
 
 class InferenceData:
     def __init__(self, input_name, input_shape, out_name, out_shape, exec_net):
@@ -10,9 +11,14 @@ class InferenceData:
         self.exec_net    = exec_net   
 
     def PreProcessInferenceData(self, frame):
-        exec_frame = cv2.resize(frame, (self.input_shape[3], self.input_shape[2]))
-        exec_frame = exec_frame.transpose((2, 0, 1))
-        exec_frame = exec_frame.reshape(self.input_shape)
+        try:
+            exec_frame = cv2.resize(frame, (self.input_shape[3], self.input_shape[2]))
+            exec_frame = exec_frame.transpose((2, 0, 1))
+            exec_frame = exec_frame.reshape(self.input_shape)
+        except:
+            print("[Error] File read error")
+            exec_frame = cv2.resize(np.full((256, 256, 3), (37, 37, 37),np.uint8), (self.input_shape[3], self.input_shape[2])).transpose((2, 0, 1)).reshape(self.input_shape)
+        
         return exec_frame
 
     def InferenceData(self, frame):       
