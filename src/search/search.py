@@ -2,13 +2,14 @@ import datetime
 import math
 import os
 from pathlib import Path
+import time
 import re
 from scipy.spatial import distance
 import numpy as np
 import cv2
 import dearpygui.dearpygui as dpg
 from src.util.stable_diffusion_util import GenerateImage
-from src.util.util import MessageboxWarn, _, GetImageEgifTags, OpenInExplorerCallback
+from src.util.util import MessageboxWarn, _, GetImageEgifTags, OpenInExplorerCallback, ImRead
 import psutil
 import pyperclip
 
@@ -133,6 +134,9 @@ def HideLoadingWindow():
         dpg.delete_item("LoadingWindow")
 
 def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_path=None, create_image=False):
+    # Get start time
+    start_time = time.time()
+
     # Check params
     model_data = settings.stable_diffusion_models[[d['name'] for d in settings.stable_diffusion_models].index(settings.stable_diffusion_model_name)]
     # Error check
@@ -167,7 +171,9 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
 
     ShowLoadingWindow()
     
+
     if create_image == False:
+        print("[Info] Start image generate")
         generated_image = GenerateImage(model_data=model_data,
                                         prompt=prompt,
                                         num_inference_steps=settings.num_inference_steps,
@@ -177,15 +183,17 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             HideLoadingWindow()
             return 0
         inference_data.StartInferenceAsync(generated_image)
+        print("[Info] Complete image output")
     else:
         try:
-            base_image = cv2.imread(base_image_path)
+            base_image = ImRead(base_image_path)
         except:
             MessageboxWarn(_("Warning"), _("File read error."))
             HideLoadingWindow()
             return 0
         inference_data.StartInferenceAsync(base_image)
     
+    print("[Info] Start image searching")
     image_list = sorted([p for p in Path(pictures_dir_path).glob('**/*') if re.search('/*\\.(jpg|jpeg|png|gif|bmp|tiff)', str(p))])
 
     searched_images = []
@@ -198,12 +206,18 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             generated_image_vector = inference_data.GetInferenceDataAsync()
             break
     
+    num = 0
+
     for image_path in image_list:
-        image_frame = cv2.imread(str(image_path))
+        
+        print("[Info] file:" + str(image_path))
+        image_frame = ImRead(str(image_path))
+        if image_frame is None:
+            continue
         image_vec = inference_data.InferenceData(image_frame)
         #cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
         cos_sim = distance.cdist(image_vec, generated_image_vector, 'cosine')[0]
-        print([image_path, cos_sim])
+        print("[Info] file:" + str(image_path) + ", value:"  + str(cos_sim))
         if cos_sim <= threshold:
             searched_images.append([image_path, cos_sim, image_frame])
             searched_images_names.append("[" + str(INDEX) + "] " + str(image_path.name))
@@ -211,6 +225,12 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             DpgSetImage(image_frame,"img_" + str(INDEX),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
             dpg.add_button(label=image_path.name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=searched_images[INDEX-1])
             INDEX += 1
+        num += 1
+
+    print("[Info] Complete image searching")
+    print("[Info] Number of checked images = " + str(num))
+    print("[Info] Number of similar images = " + str(INDEX - 1))
+    print("[Info] Elapsed times = " + str(time.time() - start_time) + "(s)")
     if INDEX != 1:
         DpgSetImageCallback(None,None,searched_images[0])
         global SEARCH_ONECE
@@ -219,4 +239,6 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         HideLoadingWindow()
         return searched_images
     else:
-        dpg.add_text("No picture", parent="Result")
+        UpdateResultArea()
+        HideLoadingWindow()
+        dpg.add_text(_("No file"), parent="Result")

@@ -8,9 +8,11 @@ import sys
 import json
 from pathlib import Path
 import re
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from PIL.ExifTags import TAGS, GPSTAGS
 import webbrowser
+import numpy as np
+import cv2
 
 
 def Print(text):
@@ -196,3 +198,20 @@ def MatchExif(exif, tag_list, none_val):
 
 def GetImageEgifTags(path, tag_list, none_val):
     return MatchExif(GetExif(path), tag_list, none_val)
+
+def ImRead(path):
+    try:
+        pil_img = Image.open(path)
+    except UnidentifiedImageError:
+        return None
+    try:
+        img = np.array(pil_img)
+    except:
+        return None
+
+    if img.ndim == 3:
+        try:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        except cv2.error:
+            img = np.full((256, 256, 3), (37, 37, 37),np.uint8)
+    return img
