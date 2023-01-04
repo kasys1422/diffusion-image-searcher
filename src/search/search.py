@@ -2,10 +2,7 @@ import datetime
 import math
 import os
 from pathlib import Path
-from pickletools import float8
 import re
-from ssl import DefaultVerifyPaths
-from tokenize import tabsize
 from scipy.spatial import distance
 import numpy as np
 import cv2
@@ -80,7 +77,6 @@ def DpgAddPictureInfo(parent, tag, button_width,width, label ,value):
     DpgAddCopyToClipBoardButton(label=label, parent=tag, width=button_width, value=value)
     dpg.add_input_text(readonly=True, default_value=value, parent=tag,width=width)
 
-
 def UpdateResultArea(): 
     win_width = dpg.get_item_width("MainWindow")
     win_height = dpg.get_item_height("MainWindow")
@@ -109,8 +105,6 @@ def UpdateResultArea():
         exif_tags = GetImageEgifTags(str(CURRENT_IMAGE_DATA[0]), ["DateTime", "Model", "GPSTag"], _("No information"))
         DpgSetImage(CURRENT_IMAGE, "DynamicTexture", "ResultPicture", width=img_width, height=img_height)
         dpg.add_child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="ResultInfo", parent="ResultPicture")
-
-
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureName", button_width=button_width, width=info_text_width, label=_("Name"), value=CURRENT_IMAGE_DATA[0].name)
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicuturePath", button_width=button_width, width=info_text_width, label=_("Path"), value=str(CURRENT_IMAGE_DATA[0]))
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureRes", button_width=button_width, width=info_text_width, label=_("Resolution"), value=str(CURRENT_IMAGE_DATA[2].shape[1])+"x"+str(CURRENT_IMAGE_DATA[2].shape[0]))
@@ -159,7 +153,6 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         HideLoadingWindow()
         return 0
 
-    
     # Get model's threshold 
     if settings.override_threshold == 0:
         try:
@@ -171,6 +164,7 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
 
     global INDEX
     INDEX = 1
+
     ShowLoadingWindow()
     
     if create_image == False:
@@ -179,7 +173,6 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
                                         num_inference_steps=settings.num_inference_steps,
                                         init_image_path=base_image_path,
                                         output=None if settings.save_inferenced_image == False else "./img/"+datetime.datetime.now().strftime('%Y%m%d%H%M%S')+" "+ prompt+".png")
-        print(type(generated_image))
         if str(type(generated_image)) != "<class 'numpy.ndarray'>":
             HideLoadingWindow()
             return 0

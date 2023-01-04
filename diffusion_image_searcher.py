@@ -1,16 +1,37 @@
 import dearpygui.dearpygui as dpg
 from src.inference.inference import SetupInference
 import src.util.util as Util
-from src.util.util import _ , FrozendLoggingErrorCheck
+from src.util.util import _ , InitLogging
 from src.search.search import ImageSearch, UpdateResultArea
 import numpy as np
 import sys
 import os
 import psutil
 
-VERSION = "0.0.1"
+# Global variable
 
-FrozendLoggingErrorCheck("./log/last_log.txt")
+VERSION = "0.0.1alpha"
+CONSOLE_TEXT = ""
+INIT_WINDOW = False
+
+def Logging(input_text):
+    if input_text == "\n":
+        return
+    global CONSOLE_TEXT
+    input_text.replace("\n", "")
+    CONSOLE_TEXT = CONSOLE_TEXT + input_text + "\n"
+    if INIT_WINDOW == True:
+        if dpg.does_item_exist("Console"):
+            if CONSOLE_TEXT.count('\n') > 200:
+                CONSOLE_TEXT = CONSOLE_TEXT[CONSOLE_TEXT.find('\n', 0) + 1:]
+            dpg.set_value(item="Console",value=CONSOLE_TEXT)
+            try: 
+                if dpg.get_y_scroll_max('console_window') - 40.0 <= dpg.get_y_scroll('console_window') or (dpg.get_y_scroll_max('console_window') >= 1.0 and dpg.get_y_scroll_max('console_window') <= 20.0):
+                    dpg.set_y_scroll('console_window', dpg.get_y_scroll_max('console_window') + 13.0)
+            except SystemError:
+                pass
+
+InitLogging(Logging, "./log/last_log.txt")
 
 def CreateSettingWindow(sender, app_data, user_data):
     def SaveValues():
@@ -51,14 +72,17 @@ def CreateSettingWindow(sender, app_data, user_data):
                 dpg.add_button(label=_("Save"), callback=SaveValues)
                 pass
 
-def CreateHelpWindow():
-    if dpg.does_item_exist("HelpWindow"):
+def CreateInfoWindow():
+    if dpg.does_item_exist("InfoWindow"):
         print("window already exists")
     else:
-        with dpg.window(tag="HelpWindow", label=_("Information"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-100],width=600,height=200, on_close=OnWindowClose):
+        with dpg.window(tag="InfoWindow", label=_("Information"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-250],width=600,height=500, on_close=OnWindowClose):
             with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
                 dpg.add_text(_('Diffusion Image Searcher') + ' ' +_('version') + ' ' + VERSION)
                 dpg.add_text(_('[website]') + ' ' + 'https://github.com/kasys1422/diffusion-image-searcher')
+                dpg.add_text(_('[console]'))
+                with dpg.child_window(tag='console_window', autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
+                    dpg.add_text(CONSOLE_TEXT, tag="Console")
 
 def CreateAboutWindow():
     if dpg.does_item_exist("TPLWindow"):
@@ -77,9 +101,8 @@ def OnWindowClose(sender):
     for key in children_dict.keys():
         for child in children_dict[key]:
             dpg.delete_item(child)
-
+    print("window closed")
     dpg.delete_item(sender)
-    print("window was deleted")
 
 
 def DpgSyncValue(value, tag_list):
@@ -108,6 +131,8 @@ def Main():
     dpg.create_context()
     dpg.create_viewport(title=limited_mode_text + _('Diffusion Image Searcher'), width=1280, height=720,min_width=720,min_height=640)
     dpg.setup_dearpygui()
+    global INIT_WINDOW
+    INIT_WINDOW = True
 
     # Setup OpenVINO for image search
     openvino_ie = SetupInference()
@@ -128,7 +153,7 @@ def Main():
             
             dpg.add_menu_item(label=_("Settings"), callback=CreateSettingWindow, user_data=settings)
             with dpg.menu(label=_("Help")):
-                dpg.add_menu_item(label=_("Information"), callback=CreateHelpWindow)
+                dpg.add_menu_item(label=_("Information"), callback=CreateInfoWindow)
                 if os.path.isfile("./third_party_licenses.txt"):
                     dpg.add_menu_item(label=_("Third party license"), callback=CreateAboutWindow)
         with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="wb"):
@@ -183,12 +208,13 @@ def Main():
                     with dpg.group(horizontal=False, tag="ResultPicture"):
                         dpg.add_image("DynamicTexture", tag ="DynamicImage")
                         
-                
     dpg.set_primary_window("MainWindow", True)
     dpg.show_viewport()
-    #dpg.start_dearpygui()
+
+    print("Diffusion Image Searcher version " + VERSION + " launch succeeded")
 
     prev_x, prev_y = [0, 0]
+
     # Loop
     while dpg.is_dearpygui_running():
         # Check window resize
@@ -203,8 +229,6 @@ def Main():
     dpg.destroy_context()
     settings.Save()
     sys.exit()
-
-
 
 if __name__ == '__main__':
     Main()
