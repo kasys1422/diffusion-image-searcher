@@ -31,22 +31,22 @@ def CreateSettingWindow(sender, app_data, user_data):
                 list_buf = [ d['name'] for d in user_data.stable_diffusion_models]
                 dpg.add_combo(list_buf,tag="SelectModel",width=500,default_value=user_data.stable_diffusion_model_name)
                 with dpg.tooltip(parent="SelectModel"):
-                    dpg.add_text(_("Image Generation Model"))
+                    dpg.add_text(_("Trained model used for image generation."))
                 dpg.add_separator()
                 dpg.add_text(_("Num inference steps"))
                 dpg.add_input_text(tag="NumInferenceSteps", decimal=True,default_value=user_data.num_inference_steps)
                 with dpg.tooltip(parent="NumInferenceSteps"):
-                    dpg.add_text(_("NumInferenceSteps"))
+                    dpg.add_text(_("Number of steps of inference. The more steps, the better the accuracy, but the longer the inference time."))
                 dpg.add_separator()
                 dpg.add_text(_("Override threshold"))
                 dpg.add_input_text(tag="OverrideThreshold", decimal=True,default_value=user_data.override_threshold)
                 with dpg.tooltip(parent="OverrideThreshold"):
-                    dpg.add_text(_("Override thresholds."))
+                    dpg.add_text(_("Overrides the threshold, which, if set to 0, automatically selects a threshold. The closer the value is to 0, the greater the similarity to the image."))
                 dpg.add_separator()
-                dpg.add_text(_("Save the inferred image to img/"))
+                dpg.add_text(_("Save the inferred image"))
                 dpg.add_checkbox(tag="SaveInferencedImage",default_value=user_data.save_inferenced_image)
                 with dpg.tooltip(parent="SaveInferencedImage"):
-                    dpg.add_text(_("SaveInferencedImage"))
+                    dpg.add_text(_("Automatically stores inferred images under img/ ."))
                 dpg.add_separator()
                 dpg.add_button(label=_("Save"), callback=SaveValues)
                 pass
@@ -106,7 +106,7 @@ def Main():
         limited_mode_text = _("[Limited mode]") + " "
     # Setup DearPyGUI
     dpg.create_context()
-    dpg.create_viewport(title=limited_mode_text + _('Diffusion Image Searcher'), width=1280, height=720,min_width=680,min_height=640)
+    dpg.create_viewport(title=limited_mode_text + _('Diffusion Image Searcher'), width=1280, height=720,min_width=720,min_height=640)
     dpg.setup_dearpygui()
 
     # Setup OpenVINO for image search
@@ -126,12 +126,12 @@ def Main():
     with dpg.window(label="MainWindow", tag="MainWindow", horizontal_scrollbar=True):
         with dpg.menu_bar():
             
-            dpg.add_menu_item(label="Settings", callback=CreateSettingWindow, user_data=settings)
-            with dpg.menu(label="Help"):
-                dpg.add_menu_item(label="Information", callback=CreateHelpWindow)
+            dpg.add_menu_item(label=_("Settings"), callback=CreateSettingWindow, user_data=settings)
+            with dpg.menu(label=_("Help")):
+                dpg.add_menu_item(label=_("Information"), callback=CreateHelpWindow)
                 if os.path.isfile("./third_party_licenses.txt"):
-                    dpg.add_menu_item(label="Third party license", callback=CreateAboutWindow)
-        with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, label="Other Themes", tag="wb"):
+                    dpg.add_menu_item(label=_("Third party license"), callback=CreateAboutWindow)
+        with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="wb"):
             
 
             #dpg.add_text(_('Welcome to Text to Image Searching System'))

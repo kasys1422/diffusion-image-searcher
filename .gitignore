@@ -1,8 +1,10 @@
-/img/
-/res/model/
-/res/settings.json
+img/
+res/model/
+res/settings.json
+!res/locale/
 setup.py
-/build/
+build/
+translate_bat/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -17,7 +17,7 @@ def Print(text):
 
 def GetTranslationData(disable_translation=False):
     now_locale, _ = locale.getdefaultlocale()
-
+   
     try:
         with open("res/language.json", 'r', encoding="utf-8") as f:
             load_value = json.load(f)
@@ -27,9 +27,9 @@ def GetTranslationData(disable_translation=False):
 
     if disable_translation == True:
         now_locale = 'en-US'
-    
+        
     return gettext.translation(domain='messages',
-                            localedir = 'locale',
+                            localedir = './res/locale',
                             languages=[now_locale], 
                             fallback=True).gettext
 # Setup translation
