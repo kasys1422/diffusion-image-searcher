@@ -10,7 +10,7 @@ import psutil
 
 # Global variable
 
-VERSION = "0.0.1alpha"
+VERSION = "0.0.1alpha2"
 CONSOLE_TEXT = ""
 INIT_WINDOW = False
 

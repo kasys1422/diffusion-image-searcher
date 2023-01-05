@@ -39,7 +39,10 @@ def GetTranslationData(disable_translation=False):
 _ = GetTranslationData()
 
 def OpenInExplorerCallback(sender, app_data, user_data):
-    webbrowser.open(user_data)
+    try:
+        webbrowser.open(user_data)
+    except:
+        MessageboxError(_("Error"), _("Can not open explorer."))
 
 def OpenFolder(initialdir, title=None):
     root = tkinter.Tk()
@@ -76,7 +79,7 @@ class Log(object):
     def __init__(self, callback=None, filename=""):
         self.filename = filename
         if self.filename != "":
-            self.l = open(filename, "a")
+            self.l = open(filename, "w")
         self.callback = callback
     def write(self, mm):
         if self.filename != "":
@@ -169,30 +172,37 @@ class Settings():
         pass
 
 def GetExif(path):
-    with Image.open(path) as im:
-        exif = im.getexif()
+    try:
+        with Image.open(path) as im:
+            exif = im.getexif()
+    except:
+        exif = None
     return exif
 
 def MatchExif(exif, tag_list, none_val):
     res = []
     for tag in tag_list:
         val = none_val
-        for id, value in exif.items():
-            #print(str(id) + " : " + str(value))
-            if tag == "GPSTag" and value != None and id == 34853:
-                gps = {}
-                for k, v in exif.get_ifd(34853).items():
-                    gps[str(GPSTAGS.get(k, "Unknown"))] = v
-                latitude = float(gps["GPSLatitude"][0] + gps["GPSLatitude"][1] / 60 + gps["GPSLatitude"][2] / 3600)
-                if gps["GPSLatitudeRef"] != "N":
-                    latitude = 0 - latitude
-                longitude = float(gps["GPSLongitude"][0] + gps["GPSLongitude"][1] / 60 + gps["GPSLongitude"][2] / 3600)
-                if gps["GPSLongitudeRef"] != "E":
-                    longitude = 0 - longitude
-                val = '{:.06f}'.format(latitude) + "," + '{:.06f}'.format(longitude)
-            else:
-                if TAGS.get(id, id) == tag:
-                    val = value
+        if exif is not None:
+            for id, value in exif.items():
+                #print(str(id) + " : " + str(value))
+                try:
+                    if tag == "GPSTag" and value != None and id == 34853:
+                        gps = {}
+                        for k, v in exif.get_ifd(34853).items():
+                            gps[str(GPSTAGS.get(k, "Unknown"))] = v
+                        latitude = float(gps["GPSLatitude"][0] + gps["GPSLatitude"][1] / 60 + gps["GPSLatitude"][2] / 3600)
+                        if gps["GPSLatitudeRef"] != "N":
+                            latitude = 0 - latitude
+                        longitude = float(gps["GPSLongitude"][0] + gps["GPSLongitude"][1] / 60 + gps["GPSLongitude"][2] / 3600)
+                        if gps["GPSLongitudeRef"] != "E":
+                            longitude = 0 - longitude
+                        val = '{:.06f}'.format(latitude) + "," + '{:.06f}'.format(longitude)
+                    else:
+                        if TAGS.get(id, id) == tag:
+                            val = value
+                except:
+                    pass
         res.append(val)
     return res
 
