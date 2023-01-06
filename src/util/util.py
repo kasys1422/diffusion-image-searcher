@@ -14,23 +14,17 @@ import webbrowser
 import numpy as np
 import cv2
 
-
-def Print(text):
-    print(text)
-
+# About translation
 def GetTranslationData(disable_translation=False):
     now_locale, _ = locale.getdefaultlocale()
-   
     try:
         with open("res/language.json", 'r', encoding="utf-8") as f:
             load_value = json.load(f)
             now_locale = load_value['language']
     except:
         pass
-
     if disable_translation == True:
         now_locale = 'en-US'
-        
     return gettext.translation(domain='messages',
                             localedir = './res/locale',
                             languages=[now_locale], 
@@ -127,6 +121,7 @@ class Settings():
         self.num_inference_steps = 6
         self.override_threshold = 0
         self.save_inferenced_image = False
+        self.show_info_when_search = False
 
         self.Load()
 
@@ -153,6 +148,7 @@ class Settings():
                 self.num_inference_steps = load_value['num_inference_steps']
                 self.override_threshold = load_value['override_threshold']
                 self.save_inferenced_image = load_value['save_inferenced_image']
+                self.show_info_when_search = load_value['show_info_when_search']
         except:
             self.Save()
         pass
@@ -166,7 +162,8 @@ class Settings():
                       'stable_diffusion_model_name' : self.stable_diffusion_model_name,
                       'num_inference_steps' : self.num_inference_steps,
                       'override_threshold' : self.override_threshold,
-                      'save_inferenced_image' : self.save_inferenced_image}
+                      'save_inferenced_image' : self.save_inferenced_image,
+                      'show_info_when_search' : self.show_info_when_search}
         with open(self.path, 'w', encoding="utf-8") as f:
             json.dump(save_value, f)
         pass

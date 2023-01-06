@@ -2,16 +2,14 @@ import dearpygui.dearpygui as dpg
 from src.inference.inference import SetupInference
 import src.util.util as Util
 from src.util.util import _ , InitLogging
-from src.search.search import ImageSearch, UpdateResultArea
+from src.search.search import ImageSearch, UpdateResultArea, CONSOLE_TEXT
 import numpy as np
 import sys
 import os
 import psutil
 
 # Global variable
-
 VERSION = "0.0.1alpha2"
-CONSOLE_TEXT = ""
 INIT_WINDOW = False
 
 def Logging(input_text):
@@ -20,16 +18,19 @@ def Logging(input_text):
     global CONSOLE_TEXT
     input_text.replace("\n", "")
     CONSOLE_TEXT = CONSOLE_TEXT + input_text + "\n"
+    if CONSOLE_TEXT.count('\n') > 200:
+        CONSOLE_TEXT = CONSOLE_TEXT[CONSOLE_TEXT.find('\n', 0) + 1:]
     if INIT_WINDOW == True:
         if dpg.does_item_exist("Console"):
-            if CONSOLE_TEXT.count('\n') > 200:
-                CONSOLE_TEXT = CONSOLE_TEXT[CONSOLE_TEXT.find('\n', 0) + 1:]
             dpg.set_value(item="Console",value=CONSOLE_TEXT)
             try: 
-                if dpg.get_y_scroll_max('console_window') - 40.0 <= dpg.get_y_scroll('console_window') or (dpg.get_y_scroll_max('console_window') >= 1.0 and dpg.get_y_scroll_max('console_window') <= 20.0):
+                if dpg.get_y_scroll_max('console_window') - 100.0 <= dpg.get_y_scroll('console_window') or (dpg.get_y_scroll_max('console_window') >= 1.0 and dpg.get_y_scroll_max('console_window') <= 20.0):
                     dpg.set_y_scroll('console_window', dpg.get_y_scroll_max('console_window') + 13.0)
             except SystemError:
                 pass
+        if dpg.does_item_exist("LoadingConsole"):
+            dpg.set_value(item="LoadingConsole",value=CONSOLE_TEXT)
+            dpg.set_y_scroll('LoadingConsoleWindow', dpg.get_y_scroll_max('LoadingConsoleWindow') + 13.0)
 
 InitLogging(Logging, "./log/last_log.txt")
 
@@ -39,12 +40,13 @@ def CreateSettingWindow(sender, app_data, user_data):
         user_data.num_inference_steps = int(dpg.get_value("NumInferenceSteps"))
         user_data.override_threshold = float(dpg.get_value("OverrideThreshold"))
         user_data.save_inferenced_image = dpg.get_value("SaveInferencedImage")
+        user_data.show_info_when_search = dpg.get_value("ShowInfoWhenSearch")
         user_data.Save()
         dpg.delete_item("SettingWindow")
 
     if dpg.does_item_exist("SettingWindow"):
-        print("window already exists")
-
+        #print("window already exists")
+        pass
     else:
         with dpg.window(tag="SettingWindow", label=_("Settings"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-250],height=500,width=600,on_close=OnWindowClose):
             with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
@@ -62,19 +64,25 @@ def CreateSettingWindow(sender, app_data, user_data):
                 dpg.add_text(_("Override threshold"))
                 dpg.add_input_text(tag="OverrideThreshold", decimal=True,default_value=user_data.override_threshold)
                 with dpg.tooltip(parent="OverrideThreshold"):
-                    dpg.add_text(_("Overrides the threshold, which, if set to 0, automatically selects a threshold. The closer the value is to 0, the greater the similarity to the image."))
+                    dpg.add_text(_("Overrides the threshold, which, if set to 0, automatically selects a threshold. The closer the value is to 1, the greater the similarity to the image."))
                 dpg.add_separator()
                 dpg.add_text(_("Save the inferred image"))
                 dpg.add_checkbox(tag="SaveInferencedImage",default_value=user_data.save_inferenced_image)
                 with dpg.tooltip(parent="SaveInferencedImage"):
                     dpg.add_text(_("Automatically stores inferred images under img/ ."))
                 dpg.add_separator()
+                dpg.add_text(_("Display detailed information during search"))
+                dpg.add_checkbox(tag="ShowInfoWhenSearch",default_value=user_data.show_info_when_search)
+                with dpg.tooltip(parent="ShowInfoWhenSearch"):
+                    dpg.add_text(_("Displays command line information during search."))
+                dpg.add_separator()
                 dpg.add_button(label=_("Save"), callback=SaveValues)
                 pass
 
 def CreateInfoWindow():
     if dpg.does_item_exist("InfoWindow"):
-        print("window already exists")
+        #print("window already exists")
+        pass
     else:
         with dpg.window(tag="InfoWindow", label=_("Information"),pos=[dpg.get_item_width("MainWindow")/2-300,dpg.get_item_height("MainWindow")/2-250],width=600,height=500, on_close=OnWindowClose):
             with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
@@ -86,7 +94,8 @@ def CreateInfoWindow():
 
 def CreateAboutWindow():
     if dpg.does_item_exist("TPLWindow"):
-        print("window already exists")
+        #print("window already exists")
+        pass
     else:
         f = open("./third_party_licenses.txt", encoding="utf-8")
         licenses = f.read()
@@ -101,9 +110,8 @@ def OnWindowClose(sender):
     for key in children_dict.keys():
         for child in children_dict[key]:
             dpg.delete_item(child)
-    print("window closed")
+    #print("window closed")
     dpg.delete_item(sender)
-
 
 def DpgSyncValue(value, tag_list):
     for tag in tag_list:
@@ -158,9 +166,6 @@ def Main():
                 if os.path.isfile("./third_party_licenses.txt"):
                     dpg.add_menu_item(label=_("Third party license"), callback=CreateAboutWindow)
         with dpg.child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="wb"):
-            
-
-            #dpg.add_text(_('Welcome to Text to Image Searching System'))
             with dpg.tab_bar(label="TabBar", tag="TabBar"):
                 if mem_bytes >= MIN_RAM:
                     with dpg.tab(label=_("Search by text"), tag="Text2Img"):
@@ -223,9 +228,7 @@ def Main():
             prev_x = dpg.get_item_width("MainWindow")
             prev_y = dpg.get_item_height("MainWindow")
             dpg.set_item_width("ResultListWindow",int(dpg.get_item_width("MainWindow")/3))
-            #print(dpg.get_value("ResultPicture"))
             UpdateResultArea()
-            #print("resized")
         dpg.render_dearpygui_frame()
     dpg.destroy_context()
     settings.Save()

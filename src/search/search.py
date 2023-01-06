@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 import time
 import re
-from scipy.spatial import distance
 import numpy as np
 import cv2
 import dearpygui.dearpygui as dpg
@@ -17,6 +16,7 @@ CURRENT_IMAGE = np.full((256, 256, 3), (37, 37, 37),np.uint8)
 CURRENT_IMAGE_DATA = None
 SEARCH_ONECE = False
 INDEX = 1
+CONSOLE_TEXT = ""
 
 # Calculate cosine similarity
 def GetCosineSimilarity(vec1, vec2):
@@ -115,7 +115,10 @@ def UpdateResultArea():
         dpg.add_button(parent="ResultInfo", label=_("Open in explorer"), width=info_button_width, callback=OpenInExplorerCallback, user_data=CURRENT_IMAGE_DATA[0].parent)
 
     if dpg.does_item_exist("LoadingWindow"):
-        dpg.set_item_pos("LoadingWindow", [win_width/2-62,dpg.get_item_height("MainWindow")/2-75])
+        dpg.set_item_pos("LoadingWindow", [int(dpg.get_item_width("MainWindow")/2-(dpg.get_item_width("MainWindow")/3)),int(dpg.get_item_height("MainWindow")/2-76)])
+        dpg.set_item_width("LoadingWindow", int(dpg.get_item_width("MainWindow")/1.5))
+        dpg.set_item_height("LoadingWindow", int(dpg.get_item_height("MainWindow")/2))
+        dpg.set_item_indent("LoadingIcon", int(dpg.get_item_width("MainWindow")/3-60))
 
 def DpgSetImageCallback(sender, app_data, user_data):
     global CURRENT_IMAGE, CURRENT_IMAGE_DATA
@@ -123,11 +126,13 @@ def DpgSetImageCallback(sender, app_data, user_data):
     CURRENT_IMAGE_DATA = user_data
     UpdateResultArea()
 
-def ShowLoadingWindow():
+def ShowLoadingWindow(show_info = False):
     if not dpg.does_item_exist("LoadingWindow"):
-        with dpg.window(label="", tag="LoadingWindow",pos=[dpg.get_item_width("MainWindow")/2-62,dpg.get_item_height("MainWindow")/2-75],width=124,height=150, no_resize=True, no_move=True, no_close=True, modal=True, menubar=False, no_scrollbar=True, no_background=True, no_title_bar=True):
-            dpg.add_loading_indicator(radius=6, color=(48,172,255), secondary_color=(48,172,255))
-                
+        with dpg.window(label="", tag="LoadingWindow",pos=[int(dpg.get_item_width("MainWindow")/2-(dpg.get_item_width("MainWindow")/3)),int(dpg.get_item_height("MainWindow")/2-76)],width=int(dpg.get_item_width("MainWindow")/1.5),height=int(dpg.get_item_height("MainWindow")/2), no_resize=True, no_move=True, no_close=True, modal=True, menubar=False, no_scrollbar=True, no_background=True, no_title_bar=True):
+            dpg.add_loading_indicator(tag="LoadingIcon", radius=6, color=(48,172,255), secondary_color=(48,172,255),indent=int(dpg.get_item_width("MainWindow")/3-60))
+            if show_info == True:
+                with dpg.child_window(tag='LoadingConsoleWindow', autosize_x =True,autosize_y =True ,horizontal_scrollbar=True):
+                        dpg.add_text(CONSOLE_TEXT, tag="LoadingConsole")
         
 def HideLoadingWindow():
     if dpg.does_item_exist("LoadingWindow"):
@@ -162,14 +167,14 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         try:
             threshold = float(model_data["threshold"])
         except:
-            threshold = 0.35
+            threshold = 0.65
     else:
         threshold = settings.override_threshold
 
     global INDEX
     INDEX = 1
 
-    ShowLoadingWindow()
+    ShowLoadingWindow(settings.show_info_when_search)
 
     if not_create_image == False:
         print("[Info] Start image generate")
@@ -214,10 +219,9 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         if image_frame is None:
             continue
         image_vec = inference_data.InferenceData(image_frame)
-        #cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
-        cos_sim = distance.cdist(image_vec, generated_image_vector, 'cosine')[0]
+        cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
         print("[Info] value:" + str(cos_sim) + ", file:"  + str(image_path))
-        if cos_sim <= threshold:
+        if cos_sim >= threshold:
             searched_images.append([image_path, cos_sim, image_frame])
             searched_images_names.append("[" + str(INDEX) + "] " + str(image_path.name))
             dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(INDEX))
