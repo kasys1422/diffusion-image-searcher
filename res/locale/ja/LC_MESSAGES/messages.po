@@ -1,0 +1,213 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2023-01-04 11:01+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: pygettext.py 1.5\n"
+
+
+#: ../diffusion_image_searcher.py:28
+msgid "Settings"
+msgstr "設定"
+
+#: ../diffusion_image_searcher.py:30
+msgid "Image Generation Model"
+msgstr "画像生成モデル"
+
+#: ../diffusion_image_searcher.py:34
+msgid "Trained model used for image generation."
+msgstr "画像生成に使用する学習済みモデル"
+
+#: ../diffusion_image_searcher.py:36
+msgid "Num inference steps"
+msgstr "推論ステップ数"
+
+#: ../diffusion_image_searcher.py:39
+msgid "Number of steps of inference. The more steps, the better the accuracy, but the longer the inference time."
+msgstr "推論のステップ数。ステップ数が多いほど精度が向上しますが、推論時間が長くなります。"
+
+#: ../diffusion_image_searcher.py:41
+msgid "Override threshold"
+msgstr "しきい値のオーバーライド"
+
+#: ../diffusion_image_searcher.py:44
+msgid "Overrides the threshold, which, if set to 0, automatically selects a threshold. The closer the value is to 1, the greater the similarity to the image."
+msgstr "しきい値を上書きます。0に設定すると自動的にしきい値が選択されます。値が1に近いほど、画像との類似性が高くなります。"
+
+#: ../diffusion_image_searcher.py:46
+msgid "Save the inferred image"
+msgstr "推論した画像の保存"
+
+#: ../diffusion_image_searcher.py:49
+msgid "Automatically stores inferred images under img/ ."
+msgstr "推論された画像をimg/以下に自動的に保存します。"
+
+msgid "Display detailed information during search"
+msgstr "検索中の詳細情報の表示"
+
+msgid "Displays command line information during search."
+msgstr "検索中にコマンドラインの情報を表示します。"
+
+msgid "Change thresholds and search again"
+msgstr "しきい値を変更して再検索"
+
+msgid "Search again"
+msgstr "再検索"
+
+msgid "Sort search results by similarity"
+msgstr "検索結果を類似度順に並び替える"
+
+msgid "Sort the list of search results based on similarity to the search target."
+msgstr "検索した結果のリストを検索対象との類似度をもとに並べ替えます。"
+
+#: ../diffusion_image_searcher.py:51
+msgid "Save"
+msgstr "保存"
+
+msgid "Help"
+msgstr "ヘルプ"
+
+#: ../diffusion_image_searcher.py:58
+msgid "Information"
+msgstr "情報"
+
+#: ../diffusion_image_searcher.py:60
+msgid "version"
+msgstr "バージョン"
+
+#: ../diffusion_image_searcher.py:60 ../diffusion_image_searcher.py:109
+msgid "Diffusion Image Searcher"
+msgstr "Diffusion Image Searcher"
+
+#: ../diffusion_image_searcher.py:61
+msgid "[website]"
+msgstr "[website]"
+
+#: ../diffusion_image_searcher.py:70
+msgid "Third party license"
+msgstr "サードパーティライセンス"
+
+#: ../diffusion_image_searcher.py:105
+msgid "A minimum of {} GB of RAM is required to use the full functionality of this software. Some functions are limited due to lack of RAM."
+msgstr "本ソフトウェアの全機能を使用するためには、最低{}GBのRAMが必要です。RAMが不足しているため、一部の機能が制限されます。"
+
+#: ../diffusion_image_searcher.py:105
+msgid "Not enough RAM"
+msgstr "RAMが不足しています"
+
+#: ../diffusion_image_searcher.py:106
+msgid "[Limited mode]"
+msgstr "[制限モード]"
+
+#: ../diffusion_image_searcher.py:140
+msgid "Search by text"
+msgstr "テキストから検索"
+
+#: ../diffusion_image_searcher.py:142 ../diffusion_image_searcher.py:167
+msgid "Folder to search"
+msgstr "検索を行うフォルダ"
+
+#: ../diffusion_image_searcher.py:144 ../diffusion_image_searcher.py:169
+msgid "Select Folder"
+msgstr "フォルダを選択"
+
+#: ../diffusion_image_searcher.py:146
+msgid "Prompt"
+msgstr "検索するテキスト(英語)"
+
+#: ../diffusion_image_searcher.py:148 ../diffusion_image_searcher.py:174
+msgid "Search"
+msgstr "検索"
+
+#: ../diffusion_image_searcher.py:165
+msgid "Search by image"
+msgstr "画像から検索"
+
+#: ../diffusion_image_searcher.py:171
+msgid "Files to search"
+msgstr "検索するファイル"
+
+#: ../diffusion_image_searcher.py:173
+msgid "Select File"
+msgstr "ファイルを選択"
+
+#: ../diffusion_image_searcher.py:177
+msgid "Result"
+msgstr "結果"
+
+#: ../diffusion_image_searcher.py:181
+msgid "No file"
+msgstr "該当するファイルがありません"
+
+
+#: ../src/search/search.py:75
+msgid "Copy values to clipboard"
+msgstr "クリップボードに値をコピー"
+
+#: ../src/search/search.py:109
+msgid "No information"
+msgstr "情報がありません"
+
+#: ../src/search/search.py:114
+msgid "Name"
+msgstr "ファイル名"
+
+#: ../src/search/search.py:115
+msgid "Path"
+msgstr "ファイルパス"
+
+#: ../src/search/search.py:116
+msgid "Resolution"
+msgstr "解像度"
+
+#: ../src/search/search.py:117
+msgid "Date"
+msgstr "日時"
+
+#: ../src/search/search.py:118
+msgid "Device"
+msgstr "デバイス"
+
+#: ../src/search/search.py:119
+msgid "GPS"
+msgstr "GPS位置情報"
+
+#: ../src/search/search.py:120
+msgid "Open in explorer"
+msgstr "エクスプローラーでフォルダを開く"
+
+#: ../src/search/search.py:146
+msgid "Insufficient memory to run the image generation model. You need {}GB to run. Please change the model or add more memory."
+msgstr "画像生成モデルの実行に必要なメモリが不足しています。実行には{}GB必要です。学習済みモデルを変更するか、メモリを増設してください。"
+
+#: ../src/search/search.py:146 ../src/search/search.py:150
+#: ../src/search/search.py:154 ../src/search/search.py:158
+#: ../src/search/search.py:191
+msgid "Warning"
+msgstr "警告"
+
+#: ../src/search/search.py:150
+msgid "Please enter the correct path to the folder you wish to search."
+msgstr "検索したいフォルダのパスを正しく入力してください。"
+
+#: ../src/search/search.py:154
+msgid "Please enter the correct path to the image you wish to search for."
+msgstr "検索したい画像のパスを正しく入力してください。"
+
+#: ../src/search/search.py:158
+msgid "Please enter a prompt."
+msgstr "検索するテキストを入力してください。"
+
+#: ../src/search/search.py:191
+msgid "File read error."
+msgstr "ファイル読み込みエラー"
+
