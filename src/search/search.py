@@ -17,6 +17,11 @@ CURRENT_IMAGE_DATA = None
 SEARCH_ONECE = False
 INDEX = 1
 CONSOLE_TEXT = ""
+PREV_TEXT = ""
+PREV_IMG = ""
+PREV_PICTURE = ""
+IMAGE_LIST = None
+SEARCHED_IMAGES = None
 
 # Calculate cosine similarity
 def GetCosineSimilarity(vec1, vec2):
@@ -89,7 +94,7 @@ def UpdateResultArea():
         if x > y:
             dpg.add_group(horizontal=True, tag="ResultPicture", parent="DynamicTextureWindow")
             img_width = int(win_width/3)
-            img_height = int(win_height-240)
+            img_height = int(win_height-245)
             info_text_width = img_width-190
             info_button_width = img_width-82
         else:
@@ -100,7 +105,7 @@ def UpdateResultArea():
             info_button_width = img_width-26
         
         for i in range(INDEX-1):
-            dpg.set_item_width(item="button_" + str(i + 1), width=max(int(win_width / 3)-70,250))
+            dpg.set_item_width(item="button_" + str(i+1), width=max(int(win_width / 3)-70,250))
 
         # Show picture data
         exif_tags = GetImageEgifTags(str(CURRENT_IMAGE_DATA[0]), ["DateTime", "Model", "GPSTag"], _("No information"))
@@ -108,7 +113,7 @@ def UpdateResultArea():
         dpg.add_child_window(autosize_x =True,autosize_y =True ,horizontal_scrollbar=True, tag="ResultInfo", parent="ResultPicture")
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureName", button_width=button_width, width=info_text_width, label=_("Name"), value=CURRENT_IMAGE_DATA[0].name)
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicuturePath", button_width=button_width, width=info_text_width, label=_("Path"), value=str(CURRENT_IMAGE_DATA[0]))
-        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureRes", button_width=button_width, width=info_text_width, label=_("Resolution"), value=str(CURRENT_IMAGE_DATA[2].shape[1])+"x"+str(CURRENT_IMAGE_DATA[2].shape[0]))
+        DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureRes", button_width=button_width, width=info_text_width, label=_("Resolution"), value=str(CURRENT_IMAGE.shape[1])+"x"+str(CURRENT_IMAGE.shape[0]))
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureDate", button_width=button_width, width=info_text_width, label=_("Date"), value=str(exif_tags[0]))
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureDevice", button_width=button_width, width=info_text_width, label=_("Device"), value=str(exif_tags[1]))
         DpgAddPictureInfo(parent="ResultInfo", tag="ResultPicutureGPS", button_width=button_width, width=info_text_width, label=_("GPS"), value=str(exif_tags[2]))
@@ -122,7 +127,7 @@ def UpdateResultArea():
 
 def DpgSetImageCallback(sender, app_data, user_data):
     global CURRENT_IMAGE, CURRENT_IMAGE_DATA
-    CURRENT_IMAGE = user_data[2]
+    CURRENT_IMAGE = ImRead(str(user_data[0]))
     CURRENT_IMAGE_DATA = user_data
     UpdateResultArea()
 
@@ -137,6 +142,17 @@ def ShowLoadingWindow(show_info = False):
 def HideLoadingWindow():
     if dpg.does_item_exist("LoadingWindow"):
         dpg.delete_item("LoadingWindow")
+
+def ResizeImgWithAspect(img, width, height):
+    h, w = img.shape[:2]
+    aspect = w / h
+    if width / height >= aspect:
+        nh = height
+        nw = round(nh * aspect)
+    else:
+        nw = width
+        nh = round(nw / aspect)
+    return cv2.resize(img, dsize=(nw, nh))
 
 def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_path=None, not_create_image=False):
     # Get start time
@@ -171,7 +187,7 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
     else:
         threshold = settings.override_threshold
 
-    global INDEX
+    global INDEX, IMAGE_LIST, SEARCHED_IMAGES
     INDEX = 1
 
     ShowLoadingWindow(settings.show_info_when_search)
@@ -200,36 +216,39 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
     image_generate_time = time.time()
 
     print("[Info] Start image searching")
-    image_list = sorted([p for p in Path(pictures_dir_path).glob('**/*') if re.search('/*\\.(jpg|jpeg|png|gif|bmp|tiff)', str(p))])
+    IMAGE_LIST = sorted([p for p in Path(pictures_dir_path).glob('**/*') if re.search('/*\\.(jpg|jpeg|png|gif|bmp|tiff)', str(p))])
 
-    searched_images = []
-    searched_images_names = []
-
-    dpg.delete_item("Result", children_only=True)
+    SEARCHED_IMAGES = []
     
     while 1:
         if inference_data.exec_net.requests[0].wait(-1) == 0:
             generated_image_vector = inference_data.GetInferenceDataAsync()
             break
-    
-    num = 0
-
-    for image_path in image_list:
+    n = 0
+    for image_path in IMAGE_LIST:
+        n = n + 1
         image_frame = ImRead(str(image_path))
         if image_frame is None:
             continue
         image_vec = inference_data.InferenceData(image_frame)
         cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
-        print("[Info] value:" + str(cos_sim) + ", file:"  + str(image_path))
+        print("[Info] " + str(n) +"/"+ str(len(IMAGE_LIST)) +"({:.2f}%) ".format(n/len(IMAGE_LIST)*100) + "value:" + str(cos_sim) + ", file:"  + str(image_path))
+        SEARCHED_IMAGES.append([image_path, cos_sim, ResizeImgWithAspect(image_frame, 24, 24)])
+
+    if settings.sort_result == True:
+        SEARCHED_IMAGES = sorted(SEARCHED_IMAGES, key=lambda x: x[1], reverse=True)
+
+    num = 0
+    num = CompareImage(threshold)
+    '''
+    for image_path in image_list:
         if cos_sim >= threshold:
-            searched_images.append([image_path, cos_sim, image_frame])
-            searched_images_names.append("[" + str(INDEX) + "] " + str(image_path.name))
             dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(INDEX))
             DpgSetImage(image_frame,"img_" + str(INDEX),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
             dpg.add_button(label=image_path.name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=searched_images[INDEX-1])
             INDEX += 1
         num += 1
-
+        '''
     print("[Info] Complete image searching")
     print("[Info] Number of checked images = " + str(num))
     print("[Info] Number of similar images = " + str(INDEX - 1))
@@ -238,13 +257,38 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         print("[Info] Image searching times = " + str(time.time() - image_generate_time) + "(s)")
     print("[Info] Elapsed times = " + str(time.time() - start_time) + "(s)")
     if INDEX != 1:
-        DpgSetImageCallback(None,None,searched_images[0])
+        return SEARCHED_IMAGES
+
+def CompareImage(threshold, re_load = False):
+    global INDEX
+    dpg.delete_item("Result", children_only=True)
+    dpg.delete_item("ResultText", children_only=True)
+    dpg.add_group(parent="ResultText",tag="ReSearch", horizontal=True)
+    dpg.add_text(_("Change thresholds and search again"),parent="ReSearch")
+    dpg.add_input_text(tag="ReSearchThreshold", decimal=True,default_value=threshold,parent="ReSearch",width=100)
+    dpg.add_button(label=_("Search again"), callback=lambda:CompareImage(float(dpg.get_value("ReSearchThreshold")), True),parent="ReSearch")
+    if re_load == True:
+        ShowLoadingWindow()
+        INDEX = 1
+    num = 0
+    for i in range(len(SEARCHED_IMAGES)):
+        if SEARCHED_IMAGES[i][1] >= threshold:
+            if INDEX == 1:
+                first_index = i
+            dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(INDEX))
+            DpgSetImage(SEARCHED_IMAGES[i][2],"img_" + str(i),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
+            dpg.add_button(label=SEARCHED_IMAGES[i][0].name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=SEARCHED_IMAGES[i])
+            INDEX += 1
+        num += 1
+
+    if INDEX != 1:
+        DpgSetImageCallback(None,None,SEARCHED_IMAGES[first_index])
         global SEARCH_ONECE
         SEARCH_ONECE = True
         UpdateResultArea()
         HideLoadingWindow()
-        return searched_images
     else:
         UpdateResultArea()
         HideLoadingWindow()
         dpg.add_text(_("No file"), parent="Result")
+    return num

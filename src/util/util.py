@@ -13,6 +13,7 @@ from PIL.ExifTags import TAGS, GPSTAGS
 import webbrowser
 import numpy as np
 import cv2
+import unicodedata
 
 # About translation
 def GetTranslationData(disable_translation=False):
@@ -122,7 +123,7 @@ class Settings():
         self.override_threshold = 0
         self.save_inferenced_image = False
         self.show_info_when_search = False
-
+        self.sort_result = True
         self.Load()
 
     def GetModelList(self):
@@ -149,6 +150,7 @@ class Settings():
                 self.override_threshold = load_value['override_threshold']
                 self.save_inferenced_image = load_value['save_inferenced_image']
                 self.show_info_when_search = load_value['show_info_when_search']
+                self.sort_result = load_value['sort_result']
         except:
             self.Save()
         pass
@@ -163,7 +165,8 @@ class Settings():
                       'num_inference_steps' : self.num_inference_steps,
                       'override_threshold' : self.override_threshold,
                       'save_inferenced_image' : self.save_inferenced_image,
-                      'show_info_when_search' : self.show_info_when_search}
+                      'show_info_when_search' : self.show_info_when_search,
+                      'sort_result' : self.sort_result}
         with open(self.path, 'w', encoding="utf-8") as f:
             json.dump(save_value, f)
         pass
@@ -206,19 +209,35 @@ def MatchExif(exif, tag_list, none_val):
 def GetImageEgifTags(path, tag_list, none_val):
     return MatchExif(GetExif(path), tag_list, none_val)
 
-def ImRead(path):
-    try:
-        pil_img = Image.open(path)
-    except UnidentifiedImageError:
-        return None
-    try:
-        img = np.array(pil_img)
-    except:
-        return None
-
-    if img.ndim == 3:
+def ImRead(path, flags=cv2.IMREAD_COLOR, dtype=np.uint8):
+    # Read opencv first
+    is_ascii = True
+    for ch in path:
+        name = unicodedata.name(ch) 
+        if "CJK UNIFIED" in name or "HIRAGANA" in name or "KATAKANA" in name:
+            is_ascii = False
+            break
+    if is_ascii == True:
         try:
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        except cv2.error:
-            img = np.full((256, 256, 3), (37, 37, 37),np.uint8)
-    return img
+            return cv2.imread(path)
+        except:
+            pass
+    try:
+        n = np.fromfile(path, dtype)
+        img = cv2.imdecode(n, flags)
+        return img
+    except:
+        try:
+            pil_img = Image.open(path)
+        except UnidentifiedImageError:
+            return None
+        try:
+            img = np.array(pil_img)
+        except:
+            return None
+        if img.ndim == 3:
+            try:
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            except cv2.error:
+                img = np.full((256, 256, 3), (37, 37, 37),np.uint8)
+        return img

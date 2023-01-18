@@ -2,6 +2,13 @@ from openvino.inference_engine import IECore
 import cv2
 import numpy as np
 
+def CheckCanUseDevice(Name):
+    if Name in IECore().available_devices:
+        return Name
+    else:
+        print('[Warning] Unavailable device "' + Name + '" has been selected. Use "' + IECore().available_devices[0] + '" instead.')
+        return IECore().available_devices[0]
+
 class InferenceData:
     def __init__(self, input_name, input_shape, out_name, out_shape, exec_net):
         self.input_name  = input_name 
@@ -49,7 +56,7 @@ class SetupInference:
         try:
             exec_net = self.ie_core.load_network(network=net, device_name=device_name, num_requests=1)  
         except RuntimeError:
-            ('[Error] Can not setup device(' + device_name + '). Using AUTO.')
+            print('[Error] Can not setup device(' + device_name + '). Using AUTO.')
             try:
                 exec_net = self.ie_core.load_network(network=net, device_name='AUTO', num_requests=1)
             except RuntimeError:

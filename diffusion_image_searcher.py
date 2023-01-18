@@ -9,7 +9,7 @@ import os
 import psutil
 
 # Global variable
-VERSION = "0.0.1alpha2"
+VERSION = "0.0.1"
 INIT_WINDOW = False
 
 def Logging(input_text):
@@ -41,6 +41,7 @@ def CreateSettingWindow(sender, app_data, user_data):
         user_data.override_threshold = float(dpg.get_value("OverrideThreshold"))
         user_data.save_inferenced_image = dpg.get_value("SaveInferencedImage")
         user_data.show_info_when_search = dpg.get_value("ShowInfoWhenSearch")
+        user_data.sort_result = dpg.get_value("SortResult")
         user_data.Save()
         dpg.delete_item("SettingWindow")
 
@@ -75,6 +76,11 @@ def CreateSettingWindow(sender, app_data, user_data):
                 dpg.add_checkbox(tag="ShowInfoWhenSearch",default_value=user_data.show_info_when_search)
                 with dpg.tooltip(parent="ShowInfoWhenSearch"):
                     dpg.add_text(_("Displays command line information during search."))
+                dpg.add_separator()
+                dpg.add_text(_("Sort search results by similarity"))
+                dpg.add_checkbox(tag="SortResult",default_value=user_data.sort_result)
+                with dpg.tooltip(parent="SortResult"):
+                    dpg.add_text(_("Sort the list of search results based on similarity to the search target."))
                 dpg.add_separator()
                 dpg.add_button(label=_("Save"), callback=SaveValues)
                 pass
@@ -177,7 +183,6 @@ def Main():
                             dpg.add_text(_('Prompt'))
                             dpg.add_input_text(label="", tag="T2IPrompt")
                         dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("T2IFolder"), dpg.get_value("T2IPrompt")))
-                        dpg.add_text("")
                     '''
                     with dpg.tab(label="Search by text and image", tag="Img2Img"):
                         with dpg.group(horizontal=True):
@@ -203,9 +208,10 @@ def Main():
                         dpg.add_input_text(tag="ISFile", default_value=settings.search_pictures_path, callback=lambda:SavePicturePath(dpg.get_value("ISFile"), ["ISFile"], settings,"search_pictures_path"))
                         dpg.add_button(label=_("Select File"), callback=lambda:SavePicturePath(Util.OpenFile("./img"), ["ISFile"], settings,"search_pictures_path"))
                     dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("ISFolder"), None, dpg.get_value("ISFile"),True))
-                    dpg.add_text("")
-
+            dpg.add_separator()
             dpg.add_text(_('Result'))
+            with dpg.group(horizontal=False, tag="ResultText"):
+                pass
             with dpg.group(horizontal=True, tag="ResultArea"):
                 with dpg.child_window(autosize_x =False,width=560,autosize_y =True ,horizontal_scrollbar=True, tag="ResultListWindow"):
                     with dpg.group(horizontal=False, tag="Result"):
