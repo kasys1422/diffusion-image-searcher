@@ -1,4 +1,4 @@
-[English/[日本語(https://github.com/kasys1422/diffusion-image-searcher/tree/main)]
+[English/[日本語](https://github.com/kasys1422/diffusion-image-searcher/tree/main)]
 # diffusion-image-searcher
 
 diffusion-image-searcher is software that searches your local computer for images related to the text you enter. It can also search for similar images based on the image.
