@@ -133,6 +133,7 @@ class Settings():
             with open(model, 'r', newline='', encoding="utf-8") as f:
                 text = re.sub(r'/\*[\s\S]*?\*/|//.*', '', f.read())
                 json_text = json.loads(text)
+                json_text["path"] = str(model.resolve()).replace('\\', '/')[:-(1 + len(model.name))]
                 model_data_list.append(json_text)
         return model_data_list
 

@@ -7,6 +7,7 @@ import numpy as np
 import sys
 import os
 import psutil
+import re
 
 # Global variable
 VERSION = "0.0.1"
@@ -37,8 +38,8 @@ InitLogging(Logging, "./log/last_log.txt")
 def CreateSettingWindow(sender, app_data, user_data):
     def SaveValues():
         user_data.stable_diffusion_model_name = dpg.get_value("SelectModel")
-        user_data.num_inference_steps = int(dpg.get_value("NumInferenceSteps"))
-        user_data.override_threshold = float(dpg.get_value("OverrideThreshold"))
+        user_data.num_inference_steps = int((str(re.search(r'\d+\.?\d*', dpg.get_value("NumInferenceSteps")).group())))
+        user_data.override_threshold = float((str(re.search(r'\d+\.?\d*', dpg.get_value("OverrideThreshold")).group())))
         user_data.save_inferenced_image = dpg.get_value("SaveInferencedImage")
         user_data.show_info_when_search = dpg.get_value("ShowInfoWhenSearch")
         user_data.sort_result = dpg.get_value("SortResult")

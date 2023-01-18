@@ -13,7 +13,7 @@ def GenerateImage(model_data, prompt,num_inference_steps, output,init_image_path
     if model_data["type"] == "openvino":
         image = sd_opevino.GenerateImage(prompt=prompt,
                                          device=CheckCanUseDevice(model_data["device"]),
-                                         model="./res/model/" + model_data["path"],
+                                         model=model_data["path"],
                                          num_inference_steps=int(num_inference_steps),
                                          init_image_path=init_image_path)
         pass
@@ -27,7 +27,7 @@ def GenerateImage(model_data, prompt,num_inference_steps, output,init_image_path
             pipeline = StableDiffusionImg2ImgPipeline
         if model_data["device"] == "cuda_fp16" or model_data["device"] == "CUDA_FP16" :
             pipe = pipeline.from_pretrained(
-                "./res/model/" + model_data["path"],
+                model_data["path"],
                 torch_dtype=torch.float16,
                 revision="fp16",
             ).to("cuda")
@@ -54,7 +54,7 @@ def GenerateImage(model_data, prompt,num_inference_steps, output,init_image_path
                 return
         else:
             pipe = pipeline.from_pretrained(
-                "./res/model/" + model_data["path"],
+                model_data["path"],
                 num_inference_steps=int(num_inference_steps),
             ).to("cpu")
             try:

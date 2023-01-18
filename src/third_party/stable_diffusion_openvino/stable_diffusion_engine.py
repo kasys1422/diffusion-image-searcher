@@ -35,7 +35,7 @@ class StableDiffusionEngine:
             self,
             scheduler,
             tokenizer,
-            model="./src/third_party/stable_diffusion_openvino/stable-diffusion-v1-4-openvino-int8",
+            model="./res/model/stable-diffusion-v1-4-openvino-int8",
             device="CPU"
     ):
         self.model = model

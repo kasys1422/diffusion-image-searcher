@@ -266,7 +266,7 @@ def CompareImage(threshold, re_load = False):
     dpg.add_group(parent="ResultText",tag="ReSearch", horizontal=True)
     dpg.add_text(_("Change thresholds and search again"),parent="ReSearch")
     dpg.add_input_text(tag="ReSearchThreshold", decimal=True,default_value=threshold,parent="ReSearch",width=100)
-    dpg.add_button(label=_("Search again"), callback=lambda:CompareImage(float(dpg.get_value("ReSearchThreshold")), True),parent="ReSearch")
+    dpg.add_button(label=_("Search again"), callback=lambda:CompareImage(float(str(re.search(r'\d+\.?\d*', dpg.get_value("ReSearchThreshold")).group())), True),parent="ReSearch")
     if re_load == True:
         ShowLoadingWindow()
         INDEX = 1
