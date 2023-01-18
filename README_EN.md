@@ -30,17 +30,17 @@ diffusion-image-searcher is software that searches your local computer for image
 1. Start the software.
 2. (Optional, if you have already downloaded additional models and have at least 12 GB of free memory) Specify "stable-diffusion-v1-4-openvino-fp16-CPU" for "Image Generation Model" in the settings.
 3. Select the "Search from text" tab.
-4. Specify the "folder to search".
-5. Describe the characteristics of the image you want to search for in English in the "Text to search (English)" field.
+4. Specify the "Folder to search".
+5. Describe the characteristics of the image you want to search for in English in the "Prompt" field.
 6. Click the "Search" button.
 7. Wait for a while as the search starts. (It may take more than 10 minutes depending on the number of images searched and disk access speed.)
 8. The results will be listed.
 
 ### Search for similar images by image
 1. Start the software.
-2. Select the "Search by Text" tab.
+2. Select the "Search by image" tab.
 3. Select the "Folder to search
-4. Select an image from "Files to search" that is close to the image you want to search.
+4. Select an image from "File to search" that is close to the image you want to search.
 5. Click the "Search" button.
 6. Wait for a while for the search to start. (It may take more than 10 minutes depending on the number of images searched and disk access speed.)
 7. The results will be listed.
