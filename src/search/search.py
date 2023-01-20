@@ -250,7 +250,7 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         num += 1
         '''
     print("[Info] Complete image searching")
-    print("[Info] Number of checked images = " + str(num))
+    print("[Info] Number of checked images = " + str(num + 1))
     print("[Info] Number of similar images = " + str(INDEX - 1))
     if not_create_image == False:
         print("[Info] Image generate times = " + str(image_generate_time - start_time) + "(s)")

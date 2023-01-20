@@ -10,7 +10,7 @@ import psutil
 import re
 
 # Global variable
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 INIT_WINDOW = False
 
 def Logging(input_text):
