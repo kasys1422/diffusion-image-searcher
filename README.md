@@ -7,7 +7,7 @@ diffusion-image-searcher は、入力したテキストに関連した画像を�
 
 ### windows exe version (推奨)
 
-1. Release内から最新版のファイルをダウンロードして任意の場所に解凍してください。
+1. [Release](https://github.com/kasys1422/diffusion-image-searcher/releases)内から最新版のファイルをダウンロードして任意の場所に解凍してください。
 2. (オプション) 追加のモデルをRelease内からダウンロードし、解凍したファイルを /res/model の中に移動してください。
 3. 解答したフォルダ内にある実行ファイルをダブルクリックして実行してください。
 
@@ -19,7 +19,7 @@ diffusion-image-searcher は、入力したテキストに関連した画像を�
 
 1. python3.9をインストールします。
 2. 任意の場所にフォルダ作成し、そこにリポジトリをクローンします。
-3. Release内から最新版のファイルをダウンロードして /res/model から学習済みモデルを適切な階層にコピーします。
+3. [Release](https://github.com/kasys1422/diffusion-image-searcher/releases)内から最新版のファイルをダウンロードして /res/model から学習済みモデルを適切な階層にコピーします。
 4. pythonの仮想環境を作成し、有効化します。
 5. requirements.txtを元にモジュールをインストールします。
 6. diffusion_image_searcher.pyを実行します。
