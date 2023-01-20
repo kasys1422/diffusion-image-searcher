@@ -35,6 +35,7 @@ diffusion-image-searcher is software that searches your local computer for image
 6. Click the "Search" button.
 7. Wait for a while as the search starts. (It may take more than 10 minutes depending on the number of images searched and disk access speed.)
 8. The results will be listed.
+9. Re-search with appropriate threshold values to obtain more appropriate results.
 
 ### Search for similar images by image
 1. Start the software.
@@ -44,6 +45,7 @@ diffusion-image-searcher is software that searches your local computer for image
 5. Click the "Search" button.
 6. Wait for a while for the search to start. (It may take more than 10 minutes depending on the number of images searched and disk access speed.)
 7. The results will be listed.
+8. Re-search with appropriate threshold values to obtain more appropriate results.
 
 ## How it works
 
