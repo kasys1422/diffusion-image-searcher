@@ -268,11 +268,12 @@ def ImageSearch(settings, pictures_dir_path, prompt, base_image_path=None, not_c
         futures = []
         for i in range(worker):
             
-            if i != 0:
-                number = int(image_num / worker)
+            if i != worker - 1:
+                number = int(image_num // worker)
             else:
-                number = int(image_num / worker) + (image_num % worker)
-            futures.append(executor.submit(ProcessInfer, params=(number, int(image_num / worker * i), IMAGE_LIST,inference_data[i], i)))
+                print(image_num % worker)
+                number = int(image_num // worker) + (image_num % worker)
+            futures.append(executor.submit(ProcessInfer, params=(number, int(image_num // worker * i), IMAGE_LIST,inference_data[i], i)))
 
         for i in range(worker):
             SEARCHED_IMAGES.extend(futures[i].result())

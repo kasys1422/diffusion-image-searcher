@@ -30,8 +30,11 @@ def Logging(input_text):
             except SystemError:
                 pass
         if dpg.does_item_exist("LoadingConsole"):
-            dpg.set_value(item="LoadingConsole",value=CONSOLE_TEXT)
-            dpg.set_y_scroll('LoadingConsoleWindow', dpg.get_y_scroll_max('LoadingConsoleWindow') + 13.0)
+            try: 
+                dpg.set_value(item="LoadingConsole",value=CONSOLE_TEXT)
+                dpg.set_y_scroll('LoadingConsoleWindow', dpg.get_y_scroll_max('LoadingConsoleWindow') + 13.0)
+            except:
+                pass
 
 InitLogging(Logging, "./log/last_log.txt")
 
