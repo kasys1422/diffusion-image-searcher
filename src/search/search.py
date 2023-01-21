@@ -5,6 +5,7 @@ from pathlib import Path
 import time
 import re
 import numpy as np
+from decimal import Decimal, ROUND_HALF_UP
 import cv2
 import dearpygui.dearpygui as dpg
 from src.util.stable_diffusion_util import GenerateImage
@@ -184,6 +185,7 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             threshold = float(model_data["threshold"])
         except:
             threshold = 0.65
+        threshold = float(Decimal(str(max(threshold, (max(t_list) - min(t_list)) * 0.8 + min(t_list)))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
     else:
         threshold = settings.override_threshold
 
@@ -239,6 +241,7 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         SEARCHED_IMAGES = sorted(SEARCHED_IMAGES, key=lambda x: x[1], reverse=True)
 
     num = 0
+    t_list = [r[1] for r in SEARCHED_IMAGES]
     num = CompareImage(threshold)
     '''
     for image_path in image_list:
