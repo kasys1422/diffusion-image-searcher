@@ -1,5 +1,5 @@
 import dearpygui.dearpygui as dpg
-from src.inference.inference import SetupInference
+
 import src.util.util as Util
 from src.util.util import _ , InitLogging
 from src.search.search import ImageSearch, UpdateResultArea, CONSOLE_TEXT
@@ -150,9 +150,7 @@ def Main():
     global INIT_WINDOW
     INIT_WINDOW = True
 
-    # Setup OpenVINO for image search
-    openvino_ie = SetupInference()
-    search_inference_data = openvino_ie.SetupModel("./res/model/efficientnet_lite0_feature-vector_2/efficientnet_lite0_feature-vector_2")
+
 
     # Setup window
     with dpg.font_registry():
@@ -183,7 +181,7 @@ def Main():
                         with dpg.group(horizontal=True):
                             dpg.add_text(_('Prompt'))
                             dpg.add_input_text(label="", tag="T2IPrompt")
-                        dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("T2IFolder"), dpg.get_value("T2IPrompt")))
+                        dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, dpg.get_value("T2IFolder"), dpg.get_value("T2IPrompt")))
                     '''
                     with dpg.tab(label="Search by text and image", tag="Img2Img"):
                         with dpg.group(horizontal=True):
@@ -197,7 +195,7 @@ def Main():
                         with dpg.group(horizontal=True):
                             dpg.add_text(_('Prompt'))
                             dpg.add_input_text(label="", tag="I2IPrompt")
-                        dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("I2IFolder"), dpg.get_value("I2IPrompt"), dpg.get_value("I2IFile")))
+                        dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, dpg.get_value("I2IFolder"), dpg.get_value("I2IPrompt"), dpg.get_value("I2IFile")))
                     #'''
                 with dpg.tab(label=_("Search by image"), tag="ImgSearch"):
                     with dpg.group(horizontal=True):
@@ -208,7 +206,7 @@ def Main():
                         dpg.add_text(_("Files to search"))
                         dpg.add_input_text(tag="ISFile", default_value=settings.search_pictures_path, callback=lambda:SavePicturePath(dpg.get_value("ISFile"), ["ISFile"], settings,"search_pictures_path"))
                         dpg.add_button(label=_("Select File"), callback=lambda:SavePicturePath(Util.OpenFile("./img"), ["ISFile"], settings,"search_pictures_path"))
-                    dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, search_inference_data, dpg.get_value("ISFolder"), None, dpg.get_value("ISFile"),True))
+                    dpg.add_button(label=_("Search"), callback=lambda:ImageSearch(settings, dpg.get_value("ISFolder"), None, dpg.get_value("ISFile"),True))
             dpg.add_separator()
             dpg.add_text(_('Result'))
             with dpg.group(horizontal=False, tag="ResultText"):

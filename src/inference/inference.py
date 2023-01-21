@@ -19,7 +19,7 @@ class InferenceData:
 
     def PreProcessInferenceData(self, frame):
         try:
-            exec_frame = cv2.resize(frame, (self.input_shape[3], self.input_shape[2]))
+            exec_frame = cv2.resize(frame, (self.input_shape[3], self.input_shape[2]), interpolation=cv2.INTER_NEAREST)
             exec_frame = exec_frame.transpose((2, 0, 1))
             exec_frame = exec_frame.reshape(self.input_shape)
         except:
@@ -31,11 +31,14 @@ class InferenceData:
     def InferenceData(self, frame):       
         return self.exec_net.infer(inputs={self.input_name: self.PreProcessInferenceData(frame)})[self.out_name]
 
-    def StartInferenceAsync(self, frame):
-        return self.exec_net.start_async(request_id=0, inputs={self.input_name: self.PreProcessInferenceData(frame)})
+    def StartInferenceAsync(self, frame, request_id=0, preprocessed=False):
+        if preprocessed is False:
+            return self.exec_net.start_async(request_id=request_id, inputs={self.input_name: self.PreProcessInferenceData(frame)})
+        else:
+            return self.exec_net.start_async(request_id=request_id, inputs={self.input_name: frame})
 
-    def GetInferenceDataAsync(self):
-        return self.exec_net.requests[0].output_blobs[self.out_name].buffer
+    def GetInferenceDataAsync(self, request_id=0):
+        return self.exec_net.requests[request_id].output_blobs[self.out_name].buffer
 
 class SetupInference:
     def __init__(self, device_name="AUTO"):

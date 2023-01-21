@@ -12,15 +12,15 @@ from src.util.stable_diffusion_util import GenerateImage
 from src.util.util import MessageboxWarn, _, GetImageEgifTags, OpenInExplorerCallback, ImRead
 import psutil
 import pyperclip
+import concurrent.futures
+from src.inference.inference import SetupInference
 
 CURRENT_IMAGE = np.full((256, 256, 3), (37, 37, 37),np.uint8)
 CURRENT_IMAGE_DATA = None
 SEARCH_ONECE = False
 INDEX = 1
 CONSOLE_TEXT = ""
-PREV_TEXT = ""
-PREV_IMG = ""
-PREV_PICTURE = ""
+NOW_NOM = 0
 IMAGE_LIST = None
 SEARCHED_IMAGES = None
 
@@ -155,7 +155,7 @@ def ResizeImgWithAspect(img, width, height):
         nh = round(nw / aspect)
     return cv2.resize(img, dsize=(nw, nh))
 
-def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_path=None, not_create_image=False):
+def ImageSearch(settings, pictures_dir_path, prompt, base_image_path=None, not_create_image=False):
     # Get start time
     start_time = time.time()
 
@@ -185,7 +185,6 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             threshold = float(model_data["threshold"])
         except:
             threshold = 0.65
-        threshold = float(Decimal(str(max(threshold, (max(t_list) - min(t_list)) * 0.8 + min(t_list)))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
     else:
         threshold = settings.override_threshold
 
@@ -204,7 +203,6 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
         if str(type(generated_image)) != "<class 'numpy.ndarray'>":
             HideLoadingWindow()
             return 0
-        inference_data.StartInferenceAsync(generated_image)
         print("[Info] Complete image output")
     else:
         try:
@@ -213,8 +211,23 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
             MessageboxWarn(_("Warning"), _("File read error."))
             HideLoadingWindow()
             return 0
-        inference_data.StartInferenceAsync(base_image)
-    
+
+    # Setup OpenVINO for image search
+    print("[Info] Loading model")
+    openvino_ie = SetupInference()
+    inference_data = []
+    worker = int(min(os.cpu_count(), 16))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker) as executor:
+        futures = []
+        for i in range(worker):
+            futures.append(executor.submit(lambda:openvino_ie.SetupModel("./res/model/efficientnet_lite0_feature-vector_2/efficientnet_lite0_feature-vector_2")))
+        for i in range(worker):
+            inference_data.append(futures[i].result())
+    print("[Info] Loading model compleated!")
+    if not_create_image == False:
+        inference_data[0].StartInferenceAsync(generated_image)
+    else:
+        inference_data[0].StartInferenceAsync(base_image)
     image_generate_time = time.time()
 
     print("[Info] Start image searching")
@@ -223,37 +236,58 @@ def ImageSearch(settings, inference_data, pictures_dir_path, prompt, base_image_
     SEARCHED_IMAGES = []
     
     while 1:
-        if inference_data.exec_net.requests[0].wait(-1) == 0:
-            generated_image_vector = inference_data.GetInferenceDataAsync()
+        if inference_data[0].exec_net.requests[0].wait(-1) == 0:
+            generated_image_vector = inference_data[0].GetInferenceDataAsync()
             break
-    n = 0
-    for image_path in IMAGE_LIST:
-        n = n + 1
-        image_frame = ImRead(str(image_path))
-        if image_frame is None:
-            continue
-        image_vec = inference_data.InferenceData(image_frame)
-        cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
-        print("[Info] " + str(n) +"/"+ str(len(IMAGE_LIST)) +"({:.2f}%) ".format(n/len(IMAGE_LIST)*100) + "value:" + str(cos_sim) + ", file:"  + str(image_path))
-        SEARCHED_IMAGES.append([image_path, cos_sim, ResizeImgWithAspect(image_frame, 24, 24)])
+    global NOW_NOM
+    NOW_NOM = 0
+    def ProcessInfer(params):
+        global NOW_NOM
+        number         = params[0]
+        first_id       = params[1]
+        image_list     = params[2]
+        inference_data = params[3]
+        worker_id      = params[4]
+        buffer_images = []
+        n = 0
+        for i in range(number):
+            n += 1
+            NOW_NOM += 1
+            image_frame = ImRead(str(image_list[i + first_id]))
+            if image_frame is None:
+                continue
+            image_vec = inference_data.InferenceData(image_frame)
+            cos_sim = GetCosineSimilarity(image_vec, generated_image_vector)
+            print("[Info] " + str(NOW_NOM) +"/"+ str(len(IMAGE_LIST)) +"({:.2f}%) ".format(NOW_NOM/len(IMAGE_LIST)*100) + " worker{:0>2d} ".format(worker_id) + str(n) +"/"+ str(number) +"({:.2f}%) ".format(n/number*100) + "value:" + str(cos_sim) + ", file:"  + str(image_list[i + first_id]))
+            buffer_images.append([image_list[i + first_id], cos_sim, ResizeImgWithAspect(image_frame,24,24)])
+        return buffer_images
+
+    image_num = len(IMAGE_LIST)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker) as executor:
+        
+        futures = []
+        for i in range(worker):
+            
+            if i != 0:
+                number = int(image_num / worker)
+            else:
+                number = int(image_num / worker) + (image_num % worker)
+            futures.append(executor.submit(ProcessInfer, params=(number, int(image_num / worker * i), IMAGE_LIST,inference_data[i], i)))
+
+        for i in range(worker):
+            SEARCHED_IMAGES.extend(futures[i].result())
 
     if settings.sort_result == True:
         SEARCHED_IMAGES = sorted(SEARCHED_IMAGES, key=lambda x: x[1], reverse=True)
+    
+    if settings.override_threshold == 0:   
+        t_list = [r[1] for r in SEARCHED_IMAGES]
+        threshold = float(Decimal(str(max(threshold, (t_list[min(3, len(t_list))] - min(t_list)) * 0.96 + min(t_list)))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
-    num = 0
-    t_list = [r[1] for r in SEARCHED_IMAGES]
-    num = CompareImage(threshold)
-    '''
-    for image_path in image_list:
-        if cos_sim >= threshold:
-            dpg.add_group(parent="Result", horizontal=True, tag="item_" + str(INDEX))
-            DpgSetImage(image_frame,"img_" + str(INDEX),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
-            dpg.add_button(label=image_path.name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=searched_images[INDEX-1])
-            INDEX += 1
-        num += 1
-        '''
+    CompareImage(threshold)
+
     print("[Info] Complete image searching")
-    print("[Info] Number of checked images = " + str(num + 1))
+    print("[Info] Number of checked images = " + str(image_num))
     print("[Info] Number of similar images = " + str(INDEX - 1))
     if not_create_image == False:
         print("[Info] Image generate times = " + str(image_generate_time - start_time) + "(s)")
@@ -273,7 +307,6 @@ def CompareImage(threshold, re_load = False):
     if re_load == True:
         ShowLoadingWindow()
         INDEX = 1
-    num = 0
     for i in range(len(SEARCHED_IMAGES)):
         if SEARCHED_IMAGES[i][1] >= threshold:
             if INDEX == 1:
@@ -282,8 +315,6 @@ def CompareImage(threshold, re_load = False):
             DpgSetImage(SEARCHED_IMAGES[i][2],"img_" + str(i),"item_" + str(INDEX), width=24, height = 24,min_width=24,min_height = 24)
             dpg.add_button(label=SEARCHED_IMAGES[i][0].name,tag="button_" + str(INDEX),parent="item_" + str(INDEX), callback=DpgSetImageCallback,user_data=SEARCHED_IMAGES[i])
             INDEX += 1
-        num += 1
-
     if INDEX != 1:
         DpgSetImageCallback(None,None,SEARCHED_IMAGES[first_index])
         global SEARCH_ONECE
@@ -294,4 +325,3 @@ def CompareImage(threshold, re_load = False):
         UpdateResultArea()
         HideLoadingWindow()
         dpg.add_text(_("No file"), parent="Result")
-    return num
