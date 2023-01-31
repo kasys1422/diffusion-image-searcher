@@ -283,7 +283,7 @@ def ImageSearch(settings, pictures_dir_path, prompt, base_image_path=None, not_c
     
     if settings.override_threshold == 0:   
         t_list = [r[1] for r in SEARCHED_IMAGES]
-        threshold = float(Decimal(str(max(threshold, (t_list[min(3, len(t_list))] - min(t_list)) * 0.96 + min(t_list)))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+        threshold = float(Decimal(str(max(threshold, (t_list[min(3, len(t_list)-1)] - min(t_list)) * 0.96 + min(t_list)))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
     CompareImage(threshold)
 
